@@ -31,3 +31,12 @@
 ## Acceptance
 - Document and test focus navigation, card selection, carry/placement, auto-foundation, draw/waste interaction and undo.
 - Keep rules transitions deterministic and independent of display or hardware input.
+
+## Confirmed B pickup and destination-aware placement (2026-11-16)
+- B picks up the maximum legal movable face-up run starting at the cursor-selected card; with default cursor at bottom of a tableau run, this is the entire valid face-up run.
+- The player may move the cursor upward before pickup to explicitly choose the highest card to carry, restricting the candidate sequence.
+- On B drop, first attempt the complete held run; if illegal, try progressively shorter suffixes (drop the leading/top card of the proposed moved run each time), selecting the longest suffix legal at the destination.
+- Cards excluded from the chosen suffix remain at the source in their original order; commit only the successful transfer as one atomic, undoable game action.
+- If no candidate suffix is legal, preserve held state and allow another destination.
+- This is a Klondike-specific placement policy exposed through a general game-rule interface, not universal behaviour for all card games.
+- Test examples: held 9♠ 8♥ 7♣ 6♦, destination 9? full sequence only when legal; destination requiring 8♥ moves 8♥ 7♣ 6♦; destination requiring 7♣ moves 7♣ 6♦.
