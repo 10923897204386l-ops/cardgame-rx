@@ -40,3 +40,10 @@
 - If no candidate suffix is legal, preserve held state and allow another destination.
 - This is a Klondike-specific placement policy exposed through a general game-rule interface, not universal behaviour for all card games.
 - Test examples: held 9♠ 8♥ 7♣ 6♦, destination 9? full sequence only when legal; destination requiring 8♥ moves 8♥ 7♣ 6♦; destination requiring 7♣ moves 7♣ 6♦.
+
+## Confirmed visual pickup versus atomic transaction (2026-11-16)
+- While B-held, render the **entire** candidate stack as moving with the cursor, even if the eventual legal transfer is only a suffix.
+- The authoritative game state is unchanged during pickup, navigation and preview. Keep a distinct transient interaction state with source, cursor, held cards and candidate destination.
+- On drop, evaluate full run then progressively shorter suffixes and choose the longest legal transfer. Commit source/destination changes together as one atomic, undoable action only after validation.
+- Render the successful suffix settling at destination; non-transferred cards remain at source. If no suffix is legal, continue displaying the full held stack and do not mutate the game.
+- Initial renderer may snap instantly. Future animations must not affect deterministic rules or transaction semantics.
