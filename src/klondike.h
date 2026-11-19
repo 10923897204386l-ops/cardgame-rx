@@ -15,6 +15,7 @@ typedef struct {
     KlondikeState state;
     struct KlondikeUndo *history;
     size_t undo_depth;
+    size_t undo_limit; /* zero means unlimited (legacy/rules default) */
 } KlondikeGame;
 
 /* Column-wise deal from shuffled deck[0..27]; top only face up.
@@ -47,4 +48,7 @@ bool klondike_draw(KlondikeGame *game);
    No shuffle/redeal limit; oldest surviving waste card is next to draw. */
 bool klondike_recycle(KlondikeGame *game);
 bool klondike_undo(KlondikeGame *game);
+/* Retain the newest limit transactions, discarding older snapshots immediately.
+   Zero restores unlimited history. This setting survives new_game/dispose. */
+void klondike_set_undo_limit(KlondikeGame *game, size_t limit);
 #endif

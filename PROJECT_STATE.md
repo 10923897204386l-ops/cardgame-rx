@@ -1,32 +1,41 @@
 # Cardgame-RX project state
 
-Updated: 2026-11-19.
+Updated: 2026-11-20.
 
-## Verified
-- M0.1A squash-merged via PR #1 at `97e82e0`; main is the authoritative baseline.
-- M0.1B pure rules implemented on `feat/m0-1b-klondike-rules`, pending PR review
-  and squash merge. No direct changes pushed to main.
-- C17/SDL2 desktop build: 3/3 CTest suites pass, including M0.1A regression tests.
-- Rules-only Release build passes 2/2 suites without SDL discovery or linkage.
-- 1,000 deterministic deals plus 32,000 legal actions validate card conservation,
-  replay and full undo. See `tasks/M0.1B-REPORT.md` for exact coverage and limits.
-- M0.1A preview still launches; both 640×480 captures match its baseline pixels.
-- No physical RG35XXSP build or device test has been performed.
+## Verified baseline
+- Main contains M0.1A (#1, `97e82e0`) and M0.1B (#2, `a880e7c`) squash merges.
+- M0.1C implemented on `feat/m0-1c-playable-controls`, pending PR review and
+  squash merge. No direct push to main or automatic merge.
+- C17/SDL2 playable desktop app launches at 1×/2×; normal/random seeds, alternate
+  back theme, custom keys and configurable undo limits exercised.
+- Full desktop CTest: 6/6 pass, including M0.1A/M0.1B regressions. SDL-free Release
+  CTest: 4/4 pass; interaction test links only libc/loader. Offscreen desktop
+  interaction/render tests also pass without DISPLAY/WAYLAND_DISPLAY.
+- Automated SDL key sequence covers stock cycle, tableau move, invalid drop,
+  cancellation, undo and confirmed restart. Human keyboard testing unavailable
+  in this tool session; not claimed as manually played.
+- Whole held overlay, ghost source, 300 ms invalid outline, tall-index visibility,
+  pause/confirmation and win checked offscreen. Evidence: `docs/screenshots/m01c/`.
+- M0.1A normal/stress captures remain 640×480 and pixel-identical to baseline.
+- Configurable bounded undo and GNU/Linux failed-allocation tests pass.
+- User keyboard correction applied: shared devkit physical-key defaults and
+  A-confirm/B-back pause menus; app relaunched for user testing.
+- No RG35XXSP hardware testing, device mapping or packaging has been performed.
 
 ## Goal
-Reusable card-game engine for RG35XXSP; Klondike first, 500 later. Separate
-pure model/rules from presentation, input and platform services.
+Reusable card-game engine for RG35XXSP; Klondike first, 500 later. Keep rules,
+input, transient interaction and rendering separate.
 
 ## Current milestone
-M0.1B implemented and locally verified, awaiting PR review and squash merge.
-Pure Klondike rules exist; the desktop preview remains static, with no gameplay UI.
+M0.1C playable desktop slice implemented and locally verified, awaiting review.
+M0.1D has not been started. See `tasks/M0.1C-REPORT.md` for commands and limits.
 
-## Blockers/open decisions
-- No blocker to scoped M0.1B acceptance.
-- Controller integration, carry/selection UI and final overflow policy remain
-  future work. The remaining interaction questions are in `tasks/M0-CONTROLS.md`.
-- Final court art and native handheld legibility/device packaging remain unverified.
+## Known limits
+- Human keyboard play-through remains a reviewer check; automated SDL coverage
+  and real desktop frame launches are distinct evidence.
+- Tall-column layout is a minimal readable prototype, not final visual polish.
+- Court art remains temporary; saves, audio and physical device support are absent.
 
 ## One next action
-Review the M0.1B PR and acceptance evidence before squash merge, then bound the
-next interaction/UI milestone using the pure legality and transaction APIs.
+Review the M0.1C PR, desktop behavior and acceptance evidence; squash merge only
+when approved. Do not begin M0.1D or device packaging without a separate request.
