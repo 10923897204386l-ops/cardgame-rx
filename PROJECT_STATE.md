@@ -3,13 +3,14 @@
 Updated: 2026-11-19.
 
 ## Verified
-- M0.1A implementation on `feat/m0-1a-card-foundation`; main remains authoritative
-  until PR review and squash merge.
-- C17/SDL2 desktop preview built on Fedora 43 Toolbox (GCC 15.3.1, SDL 2.32.74).
-- Normal and stress scenes captured at exactly 640×480 and visually inspected.
-- Desktop window launch at 1× and 2× verified using one-frame smoke runs.
-- Two CTest suites pass without a display: deterministic cards/piles/layout and
-  offscreen rendering. See `tasks/M0.1A-REPORT.md` for evidence and limits.
+- M0.1A squash-merged via PR #1 at `97e82e0`; main is the authoritative baseline.
+- M0.1B pure rules implemented on `feat/m0-1b-klondike-rules`, pending PR review
+  and squash merge. No direct changes pushed to main.
+- C17/SDL2 desktop build: 3/3 CTest suites pass, including M0.1A regression tests.
+- Rules-only Release build passes 2/2 suites without SDL discovery or linkage.
+- 1,000 deterministic deals plus 32,000 legal actions validate card conservation,
+  replay and full undo. See `tasks/M0.1B-REPORT.md` for exact coverage and limits.
+- M0.1A preview still launches; both 640×480 captures match its baseline pixels.
 - No physical RG35XXSP build or device test has been performed.
 
 ## Goal
@@ -17,15 +18,15 @@ Reusable card-game engine for RG35XXSP; Klondike first, 500 later. Separate
 pure model/rules from presentation, input and platform services.
 
 ## Current milestone
-M0.1A implemented and locally verified; awaiting PR review and squash merge.
-This is a static preview, not a working game.
+M0.1B implemented and locally verified, awaiting PR review and squash merge.
+Pure Klondike rules exist; the desktop preview remains static, with no gameplay UI.
 
 ## Blockers/open decisions
-- Final court artwork, overflow policy and device legibility remain future work.
-- Controller behavior, Klondike variant, undo and multiplayer design remain
-  outside this implementation.
-- Optional sanitizer validation unavailable: container lacks libasan/libubsan.
+- No blocker to scoped M0.1B acceptance.
+- Controller integration, carry/selection UI and final overflow policy remain
+  future work. The remaining interaction questions are in `tasks/M0-CONTROLS.md`.
+- Final court art and native handheld legibility/device packaging remain unverified.
 
 ## One next action
-Review the M0.1A PR and evidence against the task criteria before squash merge;
-then bound M0.1B around rules and interaction decisions in the handoff report.
+Review the M0.1B PR and acceptance evidence before squash merge, then bound the
+next interaction/UI milestone using the pure legality and transaction APIs.
