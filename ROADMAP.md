@@ -1,8 +1,9 @@
 # Cardgame-RX roadmap
 
-All milestones are planned; none implemented or device-verified.
+M0.1A static desktop foundation is implemented and locally verified on its task
+branch, pending PR review and squash merge. No milestone is device-verified.
 
-- **M0 — Foundation:** inspect shared devkit, specify engine contracts, controls and platform boundaries.
+- **M0 — Foundation (in progress; M0.1A desktop slice implemented):** inspect shared devkit, specify engine contracts, controls and platform boundaries.
 - **M1 — Card primitives:** cards, decks, deterministic shuffle/deal, piles/zones, actions, legal move validation and tests.
 - **M2 — UI:** card rendering, D-pad focus/navigation, selection, animation hooks and legibility on 640x480.
 - **M3 — Klondike:** complete playable rules, win/loss conditions and device acceptance tests.
