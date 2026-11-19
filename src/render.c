@@ -16,6 +16,7 @@ static const char *glyph(char c) {
     case 'J': return "00111000100001000010000101001001100";
     case 'Q': return "01110100011000110001101011001001101";
     case 'K': return "10001100101010011000101001001010001";
+    case 'B': return "11110100011000111110100011000111110";
     case 'C': return "01111100001000010000100001000001111";
     case 'D': return "11110100011000110001100011000111110";
     case 'E': return "11111100001000011110100001000011111";
@@ -42,7 +43,7 @@ static const char *glyph(char c) {
 }
 static void color(SDL_Renderer *r,SDL_Color c) { SDL_SetRenderDrawColor(r,c.r,c.g,c.b,255); }
 static void fill(SDL_Renderer *r,int x,int y,int w,int h) { SDL_Rect b={x,y,w,h}; SDL_RenderFillRect(r,&b); }
-static void text(SDL_Renderer *r,int x,int y,const char *s,int scale) {
+void render_text(SDL_Renderer *r,int x,int y,const char *s,int scale) {
     for (;*s;++s,x+=6*scale) {
         const char *g=glyph(*s);
         for(int row=0;row<7;++row) for(int col=0;col<5;++col)
@@ -77,7 +78,7 @@ void render_card(SDL_Renderer *r,Rect b,const CardState *c,BackTheme theme) {
     }
     color(r,ink(c->card.suit));
     const char *rank[]={"","A","2","3","4","5","6","7","8","9","10","J","Q","K"};
-    text(r,b.x+4,b.y+4,rank[c->card.rank],2);
+    render_text(r,b.x+4,b.y+4,rank[c->card.rank],2);
     suit(r,c->card.suit,b.x+(c->card.rank==10?28:16),b.y+4,2);
     if(c->card.rank<=10) {
         /* Conventional symmetric pip fields, kept below the index. */
@@ -99,7 +100,7 @@ void render_card(SDL_Renderer *r,Rect b,const CardState *c,BackTheme theme) {
         color(r,(SDL_Color){235,183,126,255}); fill(r,x-10,b.y+38,20,21);
         color(r,ink(c->card.suit)); fill(r,x-5,b.y+44,2,2); fill(r,x+4,b.y+44,2,2);
         fill(r,x-18,b.y+62,36,29); color(r,(SDL_Color){239,197,78,255});
-        fill(r,x-2,b.y+62,4,29); text(r,x-5,b.y+72,rank[c->card.rank],1);
+        fill(r,x-2,b.y+62,4,29); render_text(r,x-5,b.y+72,rank[c->card.rank],1);
     }
 }
 static void slot(SDL_Renderer *r,Rect b) {
@@ -109,7 +110,7 @@ void render_scene(SDL_Renderer *r,const Scene *s,const Layout *l,BackTheme theme
     color(r,(SDL_Color){22,83,64,255}); SDL_RenderClear(r);
     color(r,(SDL_Color){16,34,32,255}); fill(r,0,0,640,l->status_h);
     color(r,(SDL_Color){255,249,226,255});
-    text(r,12,7,stress?"CARDGAME RX - STRESS PREVIEW":"CARDGAME RX - STATIC PREVIEW",2);
+    render_text(r,12,7,stress?"CARDGAME RX - STRESS PREVIEW":"CARDGAME RX - STATIC PREVIEW",2);
     const Pile *top[]={&s->stock,&s->waste,NULL,&s->foundations[0],&s->foundations[1],&s->foundations[2],&s->foundations[3]};
     for(unsigned col=0;col<7;++col) if(top[col]) {
         Rect b=layout_slot(l,col,false); slot(r,b); const CardState *c=pile_top(top[col]);
