@@ -17,3 +17,10 @@ add_test(NAME foundation COMMAND foundation-tests)
 add_executable(rendering-tests tests/rendering.c src/render.c)
 target_link_libraries(rendering-tests PRIVATE cards PkgConfig::SDL2)
 add_test(NAME rendering COMMAND rendering-tests)
+
+# Pure rules have no SDL linkage; the existing static preview stays unchanged.
+add_library(klondike src/klondike.c)
+target_link_libraries(klondike PUBLIC cards)
+add_executable(klondike-tests tests/klondike.c)
+target_link_libraries(klondike-tests PRIVATE klondike)
+add_test(NAME klondike COMMAND klondike-tests)
