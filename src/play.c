@@ -16,6 +16,68 @@ size_t play_first_face_up(const Pile *p) {
 static void select_default(PlayUI *ui, const KlondikeState *s) {
     ui->selected = play_first_face_up(&s->tableau[ui->focus[AREA_TABLEAU]]);
 }
+static int top_column(const PlayUI *ui) {
+    if (ui->area == AREA_DRAW) return ui->focus[AREA_DRAW] ? 1 : 0;
+    if (ui->area == AREA_FOUNDATIONS) return (int)ui->focus[AREA_FOUNDATIONS] + 3;
+    return -1;
+}
+static void focus_top_column(PlayUI *ui, int column) {
+    if (column <= 0) { ui->area = AREA_DRAW; ui->focus[AREA_DRAW] = 0; return; }
+    if (column == 1 || column == 2) { ui->area = AREA_DRAW; ui->focus[AREA_DRAW] = 1; return; }
+    if (column >= 6) column = 6;
+    ui->area = AREA_FOUNDATIONS; ui->focus[AREA_FOUNDATIONS] = (unsigned)(column - 3);
+}
+static size_t nearest_selectable_at_y(const Pile *p, size_t current, int direction) {
+    size_t first = play_first_face_up(p);
+    if (!p || !p->count || first >= p->count) return 0;
+    if (current < first) current = first;
+    if (current >= p->count) current = p->count - 1;
+    size_t offset = current - first;
+    size_t count = p->count - first;
+    if (offset >= count) offset = count - 1;
+    return direction < 0 ? first + offset : p->count - 1 - (count - 1 - offset);
+}
+static void focus_tableau_column(PlayUI *ui, const KlondikeState *s, unsigned column, size_t y_hint) {
+    if (column > 6) column = 6;
+    ui->area = AREA_TABLEAU;
+    ui->focus[AREA_TABLEAU] = column;
+    const Pile *p = &s->tableau[column];
+    ui->selected = nearest_selectable_at_y(p, y_hint, 0);
+}
+static void spatial_horizontal(PlayUI *ui, const KlondikeState *s, InputAction action) {
+    int delta = action == INPUT_LEFT ? -1 : 1;
+    if (ui->area == AREA_TABLEAU) {
+        unsigned old = ui->focus[AREA_TABLEAU];
+        unsigned next = (unsigned)((int)(old + 7) + delta) % 7;
+        focus_tableau_column(ui, s, next, ui->selected);
+        return;
+    }
+    int col = top_column(ui);
+    col = (col + 7 + delta) % 7;
+    if (col == 2) col = delta > 0 ? 3 : 1;
+    focus_top_column(ui, col);
+}
+static void spatial_vertical(PlayUI *ui, const KlondikeState *s, InputAction action) {
+    if (ui->area != AREA_TABLEAU) {
+        if (action == INPUT_DOWN) {
+            int col = top_column(ui);
+            focus_tableau_column(ui, s, (unsigned)(col < 0 ? 0 : col > 6 ? 6 : col), 0);
+        }
+        return;
+    }
+    const Pile *p = &s->tableau[ui->focus[AREA_TABLEAU]];
+    if (!p->count) {
+        if (action == INPUT_UP) focus_top_column(ui, (int)ui->focus[AREA_TABLEAU]);
+        return;
+    }
+    size_t first = play_first_face_up(p);
+    if (action == INPUT_UP) {
+        if (ui->selected + 1 < p->count) ++ui->selected;
+        else focus_top_column(ui, (int)ui->focus[AREA_TABLEAU]);
+    } else if (ui->selected > first) {
+        --ui->selected;
+    }
+}
 void play_init(PlayUI *ui, const KlondikeState *s, uint32_t seed) {
     *ui = (PlayUI){.seed = seed};
     select_default(ui, s);
@@ -96,10 +158,12 @@ PlayEvent play_dispatch(PlayUI *ui, KlondikeGame *g, InputAction action, uint64_
         select_default(ui, &g->state);
         return PLAY_NONE;
     }
-    if (action == INPUT_LEFT || action == INPUT_RIGHT || action == INPUT_L2 || action == INPUT_R2) {
+    if (action == INPUT_LEFT || action == INPUT_RIGHT) {
+        spatial_horizontal(ui, &g->state, action);
+        return PLAY_NONE;
+    }
+    if (action == INPUT_L2 || action == INPUT_R2) {
         unsigned *col = &ui->focus[ui->area], last = area_size(ui->area) - 1;
-        if (action == INPUT_LEFT && *col) --*col;
-        if (action == INPUT_RIGHT && *col < last) ++*col;
         if (action == INPUT_L2) *col = 0;
         if (action == INPUT_R2) *col = last;
         select_default(ui, &g->state);
@@ -108,11 +172,8 @@ PlayEvent play_dispatch(PlayUI *ui, KlondikeGame *g, InputAction action, uint64_
     KlondikePile focus = play_focus(ui);
     const Pile *p = klondike_pile(&g->state, focus);
     if (action == INPUT_UP || action == INPUT_DOWN) {
-        if (ui->area == AREA_TABLEAU && p->count) {
-            size_t first = play_first_face_up(p);
-            if (action == INPUT_UP && ui->selected + 1 < p->count) ++ui->selected;
-            if (action == INPUT_DOWN && ui->selected > first) --ui->selected;
-        }
+        (void)p;
+        spatial_vertical(ui, &g->state, action);
         return PLAY_NONE;
     }
     if (action == INPUT_A || (action == INPUT_SELECT && ui->held)) {

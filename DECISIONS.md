@@ -102,3 +102,15 @@
 - Regression tests compare the full default scancode table with the inspected
   devkit mapping, verify layout independence and use these keys in the SDL
   play-through. The app is relaunched with the corrected defaults for user testing.
+
+## 2026-11-19 — Manual M0.1C review corrections
+- PR #3 was already squash-merged before this review. Treat GitHub `main` as
+  authoritative and make follow-up changes on a fresh corrective branch.
+- Manual keyboard review rejected area-cycle arrows as the primary interaction.
+  Use spatial D-pad navigation immediately: Left/Right move between visible
+  neighbouring piles/cards with wraparound, Up exits a tableau column to the
+  nearest upper-row target, and Down returns from the upper row to tableau.
+- Remove the held-source ghost; the original table position remains rendered
+  normally while the transient held overlay follows the destination cursor.
+- Make focus/held outlines thicker with rounded corners, and draw card faces and
+  backs with rounded corners. Preserve the 640×480 SDL software-rendered path.

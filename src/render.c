@@ -43,6 +43,50 @@ static const char *glyph(char c) {
 }
 static void color(SDL_Renderer *r,SDL_Color c) { SDL_SetRenderDrawColor(r,c.r,c.g,c.b,255); }
 static void fill(SDL_Renderer *r,int x,int y,int w,int h) { SDL_Rect b={x,y,w,h}; SDL_RenderFillRect(r,&b); }
+void render_round_fill(SDL_Renderer *r,Rect b,int radius,SDL_Color c) {
+    if (radius <= 0) { color(r,c); fill(r,b.x,b.y,b.w,b.h); return; }
+    if (radius*2 > b.w) radius = b.w/2;
+    if (radius*2 > b.h) radius = b.h/2;
+    color(r,c);
+    fill(r,b.x+radius,b.y,b.w-2*radius,b.h);
+    fill(r,b.x,b.y+radius,b.w,b.h-2*radius);
+    for (int dy = 0; dy < radius; ++dy) for (int dx = 0; dx < radius; ++dx) {
+        int x = radius - 1 - dx, y = radius - 1 - dy;
+        if (x*x + y*y <= radius*radius) {
+            SDL_RenderDrawPoint(r,b.x+dx,b.y+dy);
+            SDL_RenderDrawPoint(r,b.x+b.w-1-dx,b.y+dy);
+            SDL_RenderDrawPoint(r,b.x+dx,b.y+b.h-1-dy);
+            SDL_RenderDrawPoint(r,b.x+b.w-1-dx,b.y+b.h-1-dy);
+        }
+    }
+}
+void render_round_outline(SDL_Renderer *r,Rect b,int radius,int thickness,SDL_Color c) {
+    if (thickness < 1) thickness = 1;
+    for (int i = 0; i < thickness; ++i) {
+        Rect o = {b.x-i,b.y-i,b.w+2*i,b.h+2*i};
+        if (radius <= 0) {
+            color(r,c); SDL_Rect s={o.x,o.y,o.w,o.h}; SDL_RenderDrawRect(r,&s);
+            continue;
+        }
+        int rr = radius + i;
+        if (rr*2 > o.w) rr = o.w/2;
+        if (rr*2 > o.h) rr = o.h/2;
+        color(r,c);
+        SDL_RenderDrawLine(r,o.x+rr,o.y,o.x+o.w-rr-1,o.y);
+        SDL_RenderDrawLine(r,o.x+rr,o.y+o.h-1,o.x+o.w-rr-1,o.y+o.h-1);
+        SDL_RenderDrawLine(r,o.x,o.y+rr,o.x,o.y+o.h-rr-1);
+        SDL_RenderDrawLine(r,o.x+o.w-1,o.y+rr,o.x+o.w-1,o.y+o.h-rr-1);
+        for (int dy = 0; dy <= rr; ++dy) for (int dx = 0; dx <= rr; ++dx) {
+            int d = dx*dx + dy*dy;
+            if (d <= rr*rr && d >= (rr-1)*(rr-1)) {
+                SDL_RenderDrawPoint(r,o.x+rr-dx,o.y+rr-dy);
+                SDL_RenderDrawPoint(r,o.x+o.w-rr-1+dx,o.y+rr-dy);
+                SDL_RenderDrawPoint(r,o.x+rr-dx,o.y+o.h-rr-1+dy);
+                SDL_RenderDrawPoint(r,o.x+o.w-rr-1+dx,o.y+o.h-rr-1+dy);
+            }
+        }
+    }
+}
 void render_text(SDL_Renderer *r,int x,int y,const char *s,int scale) {
     for (;*s;++s,x+=6*scale) {
         const char *g=glyph(*s);
@@ -66,10 +110,10 @@ BackTheme back_theme(bool alt) {
     return alt ? (BackTheme){{105,27,50,255},{245,194,119,255},true} : (BackTheme){{23,46,92,255},{148,192,225,255},false};
 }
 void render_card(SDL_Renderer *r,Rect b,const CardState *c,BackTheme theme) {
-    color(r,(SDL_Color){20,28,28,255}); fill(r,b.x,b.y,b.w,b.h);
-    color(r,(SDL_Color){255,249,226,255}); fill(r,b.x+1,b.y+1,b.w-2,b.h-2);
+    render_round_fill(r,b,8,(SDL_Color){20,28,28,255});
+    render_round_fill(r,(Rect){b.x+1,b.y+1,b.w-2,b.h-2},7,(SDL_Color){255,249,226,255});
     if (!c->face_up) {
-        color(r,theme.base); fill(r,b.x+4,b.y+4,b.w-8,b.h-8); color(r,theme.ink);
+        render_round_fill(r,(Rect){b.x+4,b.y+4,b.w-8,b.h-8},5,theme.base); color(r,theme.ink);
         for(int y=7;y<b.h-7;y+=8) for(int x=7;x<b.w-7;x+=8) {
             if(theme.diamonds) { SDL_RenderDrawLine(r,b.x+x,b.y+y-2,b.x+x+2,b.y+y); SDL_RenderDrawLine(r,b.x+x+2,b.y+y,b.x+x,b.y+y+2); SDL_RenderDrawLine(r,b.x+x,b.y+y+2,b.x+x-2,b.y+y); SDL_RenderDrawLine(r,b.x+x-2,b.y+y,b.x+x,b.y+y-2); }
             else fill(r,b.x+x,b.y+y,2,2);
