@@ -140,6 +140,7 @@ static bool commit(KlondikeGame *g, const KlondikeState *next) {
     g->history = undo;
     ++g->undo_depth;
     g->state = *next;
+    klondike_set_undo_limit(g, g->undo_limit);
     return true;
 }
 bool klondike_move(KlondikeGame *g, KlondikePile from, size_t start, KlondikePile to) {
@@ -199,4 +200,20 @@ void klondike_new_game(KlondikeGame *g, uint32_t seed) {
     if (!g) return;
     klondike_dispose(g);
     klondike_deal(&g->state, seed);
+}
+
+void klondike_set_undo_limit(KlondikeGame *g, size_t limit) {
+    if (!g) return;
+    g->undo_limit = limit;
+    if (!limit || g->undo_depth <= limit) return;
+    struct KlondikeUndo *last = g->history;
+    for (size_t i = 1; i < limit; ++i) last = last->previous;
+    struct KlondikeUndo *older = last->previous;
+    last->previous = NULL;
+    while (older) {
+        struct KlondikeUndo *next = older->previous;
+        free(older);
+        older = next;
+    }
+    g->undo_depth = limit;
 }

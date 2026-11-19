@@ -7,7 +7,7 @@
 
 static void usage(void) {
     puts("cardgame [--seed N|random] [--scale 1..4] [--theme blue|wine]\n"
-         "         [--bind action=KeyName] [--capture FILE.bmp] [--smoke]\n"
+         "         [--bind action=KeyName] [--undo-limit N] [--capture FILE.bmp] [--smoke]\n"
          "Arrows navigate, Z=B, X=A/cancel, A=X/foundation, S=Y/stock,\n"
          "Q/E=L1/R1, 1/3=L2/R2, Enter=Start/pause, Backspace=Select/undo.\n"
          "Pause: Up/Down and B choose, A backs out. New game requires confirmation.\n"
@@ -15,7 +15,7 @@ static void usage(void) {
 }
 int main(int argc, char **argv) {
     uint32_t seed = 42; int scale = 1; bool alternate = false, smoke = false;
-    const char *capture = NULL;
+    const char *capture = NULL; size_t undo_limit = 256;
     KeyboardMap keys = keyboard_default();
     for (int i = 1; i < argc; ++i) {
         if (!strcmp(argv[i],"--help")) { usage(); return 0; }
@@ -27,8 +27,8 @@ int main(int argc, char **argv) {
             const char *theme = argv[++i];
             if (strcmp(theme,"blue") && strcmp(theme,"wine")) { usage(); return 2; }
             alternate = !strcmp(theme,"wine");
-        } else if ((!strcmp(argv[i],"--seed") || !strcmp(argv[i],"--scale")) && i+1 < argc) {
-            bool is_seed = !strcmp(argv[i],"--seed"); const char *value = argv[++i];
+        } else if ((!strcmp(argv[i],"--seed") || !strcmp(argv[i],"--scale") || !strcmp(argv[i],"--undo-limit")) && i+1 < argc) {
+            bool is_seed = !strcmp(argv[i],"--seed"), is_limit = !strcmp(argv[i],"--undo-limit"); const char *value = argv[++i];
             if (is_seed && !strcmp(value,"random")) {
                 FILE *f = fopen("/dev/urandom","rb");
                 if (!f || fread(&seed,sizeof(seed),1,f) != 1) {
@@ -38,8 +38,8 @@ int main(int argc, char **argv) {
                 fclose(f);
             } else {
                 char *end; errno = 0; unsigned long n = strtoul(value,&end,10);
-                if (errno || !*value || *end || *value == '-' || n > UINT32_MAX || (!is_seed && (n < 1 || n > 4))) { usage(); return 2; }
-                if (is_seed) seed = (uint32_t)n; else scale = (int)n;
+                if (errno || !*value || *end || *value == '-' || (!is_limit && n > UINT32_MAX) || (is_limit && n > SIZE_MAX) || (!is_seed && !is_limit && (n < 1 || n > 4))) { usage(); return 2; }
+                if (is_seed) seed = (uint32_t)n; else if (is_limit) undo_limit = (size_t)n; else scale = (int)n;
             }
         } else { usage(); return 2; }
     }
@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
     SDL_Renderer *canvas = surface ? SDL_CreateSoftwareRenderer(surface) : NULL;
     SDL_Texture *texture = screen ? SDL_CreateTexture(screen,SDL_PIXELFORMAT_ARGB8888,SDL_TEXTUREACCESS_STREAMING,640,480) : NULL;
     int result = 0;
-    KlondikeGame game = {0}; klondike_new_game(&game,seed);
+    KlondikeGame game = {0}; klondike_set_undo_limit(&game,undo_limit); klondike_new_game(&game,seed);
     PlayUI ui; play_init(&ui,&game.state,seed); Layout layout = layout_default();
     if (!window || !screen || !surface || !canvas || !texture) { result = 1; goto cleanup; }
     while (!ui.quit) {
