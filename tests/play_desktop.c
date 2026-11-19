@@ -28,6 +28,9 @@ static void mappings(void) {
     CHECK(keyboard_bind(&keys,"b=Space")); CHECK(keyboard_valid(&keys));
     CHECK(keyboard_bind(&keys,"a=Space")); CHECK(!keyboard_valid(&keys));
     CHECK(keyboard_bind(&keys,"a=z")); CHECK(keyboard_valid(&keys));
+    SDL_Event mapped; SDL_zero(mapped); mapped.type = SDL_KEYDOWN;
+    mapped.key.keysym.sym = SDLK_SPACE; CHECK(keyboard_action(&keys,&mapped) == INPUT_B);
+    mapped.key.keysym.sym = SDLK_z; CHECK(keyboard_action(&keys,&mapped) == INPUT_A);
     CHECK(!keyboard_bind(&keys,"bogus=z")); CHECK(!keyboard_bind(&keys,"b="));
     CHECK(!keyboard_bind(&keys,"b=not-a-key")); CHECK(!keyboard_bind(&keys,"broken"));
     CHECK(!strcmp(keyboard_action_name(INPUT_START),"start"));
@@ -73,6 +76,9 @@ static void carry_and_flash(void) {
     key(&ui,&g,&keys,SDLK_BACKSPACE,840); CHECK(same_state(&g.state,&before));
     key(&ui,&g,&keys,SDLK_RETURN,850); draw(&g.state,&ui,850);
     CHECK(SDL_SaveBMP(surface,"play-paused.bmp") == 0);
+    key(&ui,&g,&keys,SDLK_DOWN,860); key(&ui,&g,&keys,SDLK_z,870);
+    CHECK(ui.confirming && !ui.confirm_yes && same_state(&g.state,&before));
+    draw(&g.state,&ui,870); CHECK(SDL_SaveBMP(surface,"play-confirm.bmp") == 0);
     klondike_dispose(&g);
 }
 static void tall_columns(void) {
@@ -103,6 +109,11 @@ static void tall_columns(void) {
     CHECK(play_held_count(&ui,&s) == 13 && play_held_overlap(&layout,13) >= 22);
     CHECK(b.y-4 >= layout.status_h && b.y+b.h+4 < 480);
     draw(&s,&ui,100); CHECK(SDL_SaveBMP(surface,"play-tall-held.bmp") == 0);
+    Layout large_spacing = layout; large_spacing.status_h = 40; large_spacing.face_up_overlap = 100;
+    CHECK(layout_valid(&large_spacing));
+    b = play_held_bounds(&large_spacing,&s,&ui);
+    CHECK(b.y-4 >= large_spacing.status_h && b.y+b.h+4 < 480);
+    CHECK(play_held_overlap(&large_spacing,13) >= 22);
 }
 static void sdl_key_playthrough(void) {
     KlondikeGame g = {0}; klondike_new_game(&g,42); PlayUI ui; play_init(&ui,&g.state,42);
@@ -112,7 +123,7 @@ static void sdl_key_playthrough(void) {
     CHECK(same_state(&g.state,&initial) && g.undo_depth == 25);
     key(&ui,&g,&keys,SDLK_BACKSPACE,300); CHECK(g.state.stock.count == 0);
     key(&ui,&g,&keys,SDLK_s,310); key(&ui,&g,&keys,SDLK_e,320);
-    /* Seed 42: 4D from tableau 6 fits 5S in tableau 0. */
+    /* Seed 42: red 4 from tableau 6 fits 5S in tableau 0. */
     for (int i = 0; i < 6; ++i) key(&ui,&g,&keys,SDLK_RIGHT,330);
     CHECK(ui.focus[1] == 6); key(&ui,&g,&keys,SDLK_z,340);
     for (int i = 0; i < 6; ++i) key(&ui,&g,&keys,SDLK_LEFT,350);
@@ -131,10 +142,24 @@ static void sdl_key_playthrough(void) {
     SDL_Event close; SDL_zero(close); close.type = SDL_QUIT; CHECK(desktop_event(&ui,&g,&keys,&close,480) == PLAY_QUIT);
     klondike_dispose(&g);
 }
+static void winning(void) {
+    KlondikeGame g = {0};
+    for (Suit suit = CLUBS; suit <= SPADES; ++suit)
+        for (unsigned rank = 1; rank <= 13; ++rank) add(&g.state.foundations[suit],suit,rank,true);
+    CHECK(klondike_won(&g.state)); PlayUI ui; play_init(&ui,&g.state,42);
+    draw(&g.state,&ui,0); CHECK(SDL_SaveBMP(surface,"play-win.bmp") == 0);
+    KlondikeState before = g.state;
+    CHECK(play_dispatch(&ui,&g,INPUT_Y,0) == PLAY_ERROR && same_state(&g.state,&before));
+    play_dispatch(&ui,&g,INPUT_START,10); play_dispatch(&ui,&g,INPUT_DOWN,20);
+    play_dispatch(&ui,&g,INPUT_B,30); play_dispatch(&ui,&g,INPUT_RIGHT,40);
+    CHECK(play_dispatch(&ui,&g,INPUT_B,50) == PLAY_NEW_GAME);
+    CHECK(!klondike_won(&g.state) && klondike_valid(&g.state) && ui.seed == 43);
+    klondike_dispose(&g);
+}
 int main(void) {
     surface = SDL_CreateRGBSurfaceWithFormat(0,640,480,32,SDL_PIXELFORMAT_ARGB8888);
     CHECK(surface); renderer = SDL_CreateSoftwareRenderer(surface); CHECK(renderer); layout = layout_default();
-    mappings(); carry_and_flash(); tall_columns(); sdl_key_playthrough();
+    mappings(); carry_and_flash(); tall_columns(); sdl_key_playthrough(); winning();
     SDL_DestroyRenderer(renderer); SDL_FreeSurface(surface);
     puts("desktop: configurable keys, full held overlay/ghost, invalid outline pixels, tall indexes and SDL keyboard playthrough passed");
     return 0;

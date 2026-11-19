@@ -28,7 +28,7 @@ Rect play_focus_rect(const Layout *l, const KlondikeState *s, const PlayUI *ui) 
     return layout_slot(l,focus.zone == K_FOUNDATION ? focus.index + 3 : focus.zone == K_WASTE ? 1 : 0,false);
 }
 int play_held_overlap(const Layout *l, size_t count) {
-    return count > 1 ? min(l->face_up_overlap,(CANVAS_HEIGHT - 40 - l->card_h) / (int)(count - 1)) : l->face_up_overlap;
+    return count > 1 ? min(l->face_up_overlap,(CANVAS_HEIGHT - l->status_h - 12 - l->card_h) / (int)(count - 1)) : l->face_up_overlap;
 }
 Rect play_held_bounds(const Layout *l, const KlondikeState *s, const PlayUI *ui) {
     size_t n = play_held_count(ui,s);

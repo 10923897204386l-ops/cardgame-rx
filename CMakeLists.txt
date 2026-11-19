@@ -11,7 +11,7 @@ add_executable(foundation-tests tests/foundation.c)
 target_link_libraries(foundation-tests PRIVATE cards)
 add_test(NAME foundation COMMAND foundation-tests)
 
-option(CARDGAME_BUILD_PREVIEW "Build SDL desktop preview and rendering tests" ON)
+option(CARDGAME_BUILD_PREVIEW "Build SDL playable app, preview and rendering tests" ON)
 if(CARDGAME_BUILD_PREVIEW)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2)

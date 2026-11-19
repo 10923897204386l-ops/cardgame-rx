@@ -60,3 +60,32 @@
   small state; history is released by undo, reset or dispose.
 - `CARDGAME_BUILD_PREVIEW=OFF` allows rules/model tests without SDL discovery or
   linkage. Default builds preserve the M0.1A preview and renderer test suite.
+
+## 2026-11-19 — M0.1C playable desktop interaction
+- Follow the user-approved M0.1C control contract. Generic logical actions live
+  in `controls.h`; configurable SDL key translation is separate from Klondike
+  interaction policy. Default arrows/Z/X/A/S/Q/E/1/3/Enter/Backspace mappings have
+  no collisions. Ignore OS key repeats; no raw Linux device keycodes.
+- Keep authoritative `KlondikeGame` separate from `PlayUI` focus, held source/index,
+  pause, feedback and seed metadata. No state/history mutation before a valid
+  placement; use existing longest-suffix evaluation and atomic drop APIs.
+- Keep the entire candidate visible in an overlay; ghost its unchanged source.
+  Invalid B drops flash the whole overlay outline red for 300 ms using injected
+  monotonic time, without sleeps. `PLAY_ERROR` reserves a future semantic sound
+  event, with no audio implementation or new audio dependency.
+- Keep last pile per Draw/Tableau/Foundations area. Navigation clamps at edges;
+  entering a pile resets selection to the first face-up index. Up increases the
+  bottom-to-top pile index, Down decreases; held candidate remains unchanged.
+- Pause preserves carry and gates gameplay. New Game defaults confirmation to
+  No; Yes deals seed+1 and clears transient state/history. Window close exits;
+  gameplay has no preview debug key aliases. Win lives in the top status bar.
+- Use original tableau spacing when it fits. Overflow collapses the hidden prefix
+  into at most 24 pixels and uses 22-pixel face-up strips. Label hidden count;
+  only final pip art may clip, marked by an ellipsis. Every selectable index and
+  the complete held overlay remain visible. This is not final overflow polish.
+- Add an optional rules history limit without changing the zero/unlimited library
+  default. Desktop defaults to 256 newest snapshots (`--undo-limit`, zero opts
+  into unlimited). Prune oldest snapshots; keep the setting across reset/dispose.
+  GNU/Linux malloc wrapping tests failed draw/drop/recycle allocation atomicity.
+- Preserve the independent M0.1A preview and its pixel captures. No M0.1D,
+  RG35XXSP packaging or hardware input implementation is included.
