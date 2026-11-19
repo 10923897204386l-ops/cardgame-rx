@@ -59,7 +59,7 @@ static void cancel(PlayUI *ui, const KlondikeState *s) {
     ui->invalid_until = 0;
 }
 static PlayEvent pause_action(PlayUI *ui, KlondikeGame *g, InputAction action) {
-    if (action == INPUT_A || action == INPUT_START) {
+    if (action == INPUT_B || action == INPUT_START) {
         if (ui->confirming) { ui->confirming = false; ui->confirm_yes = false; }
         else ui->paused = false;
         return PLAY_NONE;
@@ -67,7 +67,7 @@ static PlayEvent pause_action(PlayUI *ui, KlondikeGame *g, InputAction action) {
     if (ui->confirming) {
         if (action == INPUT_LEFT || action == INPUT_RIGHT || action == INPUT_UP || action == INPUT_DOWN)
             ui->confirm_yes = !ui->confirm_yes;
-        if (action == INPUT_B) {
+        if (action == INPUT_A) {
             if (ui->confirm_yes) {
                 uint32_t seed = ui->seed + 1;
                 klondike_new_game(g, seed);
@@ -80,7 +80,7 @@ static PlayEvent pause_action(PlayUI *ui, KlondikeGame *g, InputAction action) {
     }
     if (action == INPUT_UP) ui->menu = (ui->menu + 2) % 3;
     if (action == INPUT_DOWN) ui->menu = (ui->menu + 1) % 3;
-    if (action != INPUT_B) return PLAY_NONE;
+    if (action != INPUT_A) return PLAY_NONE;
     if (ui->menu == 0) ui->paused = false;
     else if (ui->menu == 1) { ui->confirming = true; ui->confirm_yes = false; }
     else { ui->quit = true; return PLAY_QUIT; }
@@ -88,6 +88,7 @@ static PlayEvent pause_action(PlayUI *ui, KlondikeGame *g, InputAction action) {
 }
 PlayEvent play_dispatch(PlayUI *ui, KlondikeGame *g, InputAction action, uint64_t now) {
     if (ui->quit || action >= INPUT_COUNT) return PLAY_NONE;
+    if (action == INPUT_QUIT) { ui->quit = true; return PLAY_QUIT; }
     if (ui->paused) return pause_action(ui, g, action);
     if (action == INPUT_START) { ui->paused = true; ui->menu = 0; return PLAY_NONE; }
     if (action == INPUT_L1 || action == INPUT_R1) {

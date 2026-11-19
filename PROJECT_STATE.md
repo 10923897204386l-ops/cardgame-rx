@@ -1,6 +1,6 @@
 # Cardgame-RX project state
 
-Updated: 2026-11-19.
+Updated: 2026-11-20.
 
 ## Verified baseline
 - Main contains M0.1A (#1, `97e82e0`) and M0.1B (#2, `a880e7c`) squash merges.
@@ -18,6 +18,8 @@ Updated: 2026-11-19.
   pause/confirmation and win checked offscreen. Evidence: `docs/screenshots/m01c/`.
 - M0.1A normal/stress captures remain 640×480 and pixel-identical to baseline.
 - Configurable bounded undo and GNU/Linux failed-allocation tests pass.
+- User keyboard correction applied: shared devkit physical-key defaults and
+  A-confirm/B-back pause menus; app relaunched for user testing.
 - No RG35XXSP hardware testing, device mapping or packaging has been performed.
 
 ## Goal

@@ -89,3 +89,16 @@
   GNU/Linux malloc wrapping tests failed draw/drop/recycle allocation atomicity.
 - Preserve the independent M0.1A preview and its pixel captures. No M0.1D,
   RG35XXSP packaging or hardware input implementation is included.
+
+## 2026-11-19 — User correction: use shared devkit desktop controls
+- Supersedes the original M0.1C keyboard defaults after the user's desktop test.
+- Inspected the shared devkit `src/desktop_input.c` and `docs/controls.md`: use
+  physical SDL scancodes, arrows, W=X, A=Y, S=B, D=A, Left Shift/Space=L1/R1,
+  Left Ctrl/Left Alt=L2/R2, E=Start, Q=Select, Escape=Quit.
+- Match its menu convention too: A confirms and B backs out/resumes. Preserve
+  Klondike gameplay B pickup/drop and A waste/cancel. Keep mappings configurable;
+  logical Quit is configurable like the other inputs. M and Ctrl+R debug reload
+  have no gameplay binding, so New Game remains explicitly confirmed.
+- Regression tests compare the full default scancode table with the inspected
+  devkit mapping, verify layout independence and use these keys in the SDL
+  play-through. The app is relaunched with the corrected defaults for user testing.

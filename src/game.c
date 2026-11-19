@@ -8,9 +8,9 @@
 static void usage(void) {
     puts("cardgame [--seed N|random] [--scale 1..4] [--theme blue|wine]\n"
          "         [--bind action=KeyName] [--undo-limit N] [--capture FILE.bmp] [--smoke]\n"
-         "Arrows navigate, Z=B, X=A/cancel, A=X/foundation, S=Y/stock,\n"
-         "Q/E=L1/R1, 1/3=L2/R2, Enter=Start/pause, Backspace=Select/undo.\n"
-         "Pause: Up/Down and B choose, A backs out. New game requires confirmation.\n"
+         "Devkit keys: arrows navigate, S=B, D=A/cancel, W=X/foundation, A=Y/stock,\n"
+         "Left Shift/Space=L1/R1, Left Ctrl/Left Alt=L2/R2, E=Start, Q=Select, Escape=Quit.\n"
+         "Pause: Up/Down and A choose, B backs out. New game requires confirmation.\n"
          "Static/stress preview remains a separate executable: card-preview.");
 }
 int main(int argc, char **argv) {

@@ -25,7 +25,7 @@ a display; rendering tests use offscreen software surfaces, without windows.
 ```sh
 ./build/desktop/cardgame --seed 42 --scale 2 --theme wine
 ./build/desktop/cardgame --seed random --undo-limit 128
-./build/desktop/cardgame --bind b=Space --bind start=Escape
+./build/desktop/cardgame --bind b=F1 --bind start=Return
 ```
 
 Seed 42 is the deterministic default. `random` reads and prints an OS seed for
@@ -39,14 +39,15 @@ and wine card backs are available with `--theme`. Custom image import is deferre
 | --- | --- | --- |
 | D-pad Left/Right | Left/Right arrows | Previous/next pile; clamp at area edges |
 | D-pad Up/Down | Up/Down arrows | Toward pile top / bottom of movable face-up run |
-| B | Z | Pick up; attempt longest legal suffix placement; source pile cancels |
-| A | X | Carry waste top at current cursor; while holding cancel and return to source |
-| X | A | Move selected single eligible card to first legal foundation |
-| Y | S | Draw one, or recycle when stock empty; ignored while holding |
-| L1/R1 | Q/E | Cycle Draw → Tableau → Foundations; L1 reverses |
-| L2/R2 | 1/3 | First/last pile, including during carry |
-| Start | Enter | Pause / resume |
-| Select | Backspace | Cancel carry first; otherwise undo one committed action |
+| B | S | Pick up; attempt longest legal suffix placement; source pile cancels |
+| A | D | Carry waste top at current cursor; while holding cancel and return to source |
+| X | W | Move selected single eligible card to first legal foundation |
+| Y | A | Draw one, or recycle when stock empty; ignored while holding |
+| L1/R1 | Left Shift/Space | Cycle Draw → Tableau → Foundations; L1 reverses |
+| L2/R2 | Left Ctrl/Left Alt | First/last pile, including during carry |
+| Start | E | Pause / resume |
+| Select | Q | Cancel carry first; otherwise undo one committed action |
+| Quit | Escape | Exit the desktop app |
 
 The area remembers its last pile (initially stock, tableau 0, foundation 0).
 Entering a pile selects the bottom of its maximal face-up run; hidden cards
@@ -56,16 +57,20 @@ During carry, these buttons change destination focus/selection only; the held
 source and candidate stay fixed. Focus uses a yellow outline, becoming green
 when the held candidate has a legal destination suffix.
 
-Pause uses Up/Down and B to choose Resume, New Game or Quit. New Game requires
-confirmation, with **No selected initially**; arrows toggle No/Yes and B accepts.
-A or Start backs out of confirmation; at the main pause menu A/Start resumes.
+Pause uses Up/Down and A (D) to choose Resume, New Game or Quit. New Game requires
+confirmation, with **No selected initially**; arrows toggle No/Yes and A accepts.
+B or Start backs out of confirmation; at the main pause menu B/Start resumes.
 Gameplay actions are gated while paused. Pause preserves a pending carry.
-Window close exits. There are no gameplay Escape/T/B debug aliases; use Start
-or explicitly remap it to Escape. The static preview has separate controls.
+Window close or Escape exits. These physical-key defaults match the shared
+devkit desktop input mapping. Its M key (X) and Ctrl+R debug reload have no
+gameplay binding here; New Game still requires confirmation. T/B preview debug
+keys remain confined to the static preview.
 
 Use repeated `--bind action=KeyName` options for configuration. Action names are
 `left`, `right`, `up`, `down`, `a`, `b`, `x`, `y`, `l1`, `r1`, `l2`, `r2`, `start`,
-`select`. Key names are SDL names such as `Space`, `Escape`, `Return` or `F1`.
+`select`, `quit`. Key names are SDL physical scancode names such as `Space`,
+`Left Shift`, `Return` or `F1`. Physical positions are used, as in the devkit,
+independently of keyboard layout.
 Invalid keys and final duplicate assignments are rejected before launch; key
 swaps can be supplied as multiple overrides. OS key-repeat events are ignored,
 so each physical press generates one action.

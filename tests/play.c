@@ -107,21 +107,21 @@ static void stock_and_pause(void) {
     const InputAction gated[] = {INPUT_X,INPUT_Y,INPUT_SELECT,INPUT_R1,INPUT_L1,INPUT_R2,INPUT_L2};
     for (size_t i = 0; i < sizeof(gated)/sizeof(*gated); ++i) press(&ui,&g,gated[i]);
     CHECK(same_state(&g.state,&empty_stock) && g.history == history && g.undo_depth == depth && ui.held);
-    press(&ui,&g,INPUT_B); CHECK(!ui.paused && ui.held); /* Resume */
-    press(&ui,&g,INPUT_START); press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_B);
+    press(&ui,&g,INPUT_A); CHECK(!ui.paused && ui.held); /* Resume */
+    press(&ui,&g,INPUT_START); press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_A);
     CHECK(ui.confirming && !ui.confirm_yes);
-    press(&ui,&g,INPUT_B); CHECK(ui.paused && !ui.confirming && ui.held); /* No */
+    press(&ui,&g,INPUT_A); CHECK(ui.paused && !ui.confirming && ui.held); /* No */
     CHECK(same_state(&g.state,&empty_stock) && g.history == history);
-    press(&ui,&g,INPUT_B); press(&ui,&g,INPUT_RIGHT); press(&ui,&g,INPUT_A);
+    press(&ui,&g,INPUT_A); press(&ui,&g,INPUT_RIGHT); press(&ui,&g,INPUT_B);
     CHECK(!ui.confirming && ui.paused && same_state(&g.state,&empty_stock));
-    press(&ui,&g,INPUT_B); press(&ui,&g,INPUT_RIGHT);
-    CHECK(press(&ui,&g,INPUT_B) == PLAY_NEW_GAME);
+    press(&ui,&g,INPUT_A); press(&ui,&g,INPUT_RIGHT);
+    CHECK(press(&ui,&g,INPUT_A) == PLAY_NEW_GAME);
     KlondikeState expected; klondike_deal(&expected,43);
     CHECK(same_state(&g.state,&expected) && !ui.paused && !ui.held && !g.history && !g.undo_depth);
     CHECK(ui.area == AREA_DRAW && ui.focus[0] == 0 && ui.seed == 43);
     press(&ui,&g,INPUT_START); press(&ui,&g,INPUT_START); CHECK(!ui.paused);
     press(&ui,&g,INPUT_START); press(&ui,&g,INPUT_UP);
-    CHECK(press(&ui,&g,INPUT_B) == PLAY_QUIT && ui.quit);
+    CHECK(press(&ui,&g,INPUT_A) == PLAY_QUIT && ui.quit);
     CHECK(same_state(&g.state,&expected));
     CHECK(press(&ui,&g,INPUT_Y) == PLAY_NONE && same_state(&g.state,&expected));
     klondike_dispose(&g);
