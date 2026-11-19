@@ -69,15 +69,17 @@ static void carry_and_flash(void) {
                 int yy = b.y+(int)i*24+y;
                 CHECK(pixel(b.x+x,yy) == ((Uint32 *)((unsigned char *)expected->pixels+yy*expected->pitch))[b.x+x]);
             }
-    CHECK(!rgb(24,180,255,249,226)); /* source candidate visibly ghosted */
+    Rect source_under = play_card_rect(&layout,&g.state.tableau[0],0,0);
+    CHECK(!rgb(24,180,255,249,226)); /* held source card is not still drawn in place */
+    CHECK(rgb(source_under.x+10,source_under.y+10,23,46,92)); /* underlying face-down card remains hidden */
     SDL_DestroyRenderer(er); SDL_FreeSurface(expected);
     key(&ui,&g,&keys,SDL_SCANCODE_RIGHT,130); b = play_held_bounds(&layout,&g.state,&ui);
     CHECK(key(&ui,&g,&keys,SDL_SCANCODE_S,200) == PLAY_ERROR);
-    draw(&g.state,&ui,200); CHECK(rgb(b.x-4,b.y-4,255,42,54));
-    CHECK(rgb(b.x+b.w+3,b.y+b.h+3,255,42,54)); /* entire stack, not destination */
-    draw(&g.state,&ui,499); CHECK(rgb(b.x-4,b.y-4,255,42,54));
-    draw(&g.state,&ui,500); CHECK(rgb(b.x-4,b.y-4,119,218,255));
-    key(&ui,&g,&keys,SDL_SCANCODE_S,510); draw(&g.state,&ui,510); CHECK(rgb(b.x-4,b.y-4,255,42,54));
+    draw(&g.state,&ui,200); CHECK(rgb(b.x+b.w/2,b.y-3,255,42,54));
+    CHECK(rgb(b.x+b.w/2,b.y+b.h+2,255,42,54)); /* entire stack, not destination */
+    draw(&g.state,&ui,499); CHECK(rgb(b.x+b.w/2,b.y-3,255,42,54));
+    draw(&g.state,&ui,500); CHECK(rgb(b.x+b.w/2,b.y-3,119,218,255));
+    key(&ui,&g,&keys,SDL_SCANCODE_S,510); draw(&g.state,&ui,510); CHECK(rgb(b.x+b.w/2,b.y-3,255,42,54));
     CHECK(same_state(&g.state,&before) && !g.history && play_held_count(&ui,&g.state) == 4);
     CHECK(rgb(639,479,22,83,64)); /* no bottom bar */
     CHECK(SDL_SaveBMP(surface,"play-invalid.bmp") == 0);
@@ -172,6 +174,6 @@ int main(void) {
     CHECK(surface); renderer = SDL_CreateSoftwareRenderer(surface); CHECK(renderer); layout = layout_default();
     mappings(); carry_and_flash(); tall_columns(); sdl_key_playthrough(); winning();
     SDL_DestroyRenderer(renderer); SDL_FreeSurface(surface);
-    puts("desktop: configurable keys, full held overlay/ghost, invalid outline pixels, tall indexes and SDL keyboard playthrough passed");
+    puts("desktop: configurable keys, full held overlay without source ghost, invalid outline pixels, tall indexes and SDL keyboard playthrough passed");
     return 0;
 }

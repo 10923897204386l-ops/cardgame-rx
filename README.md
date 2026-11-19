@@ -37,25 +37,26 @@ and wine card backs are available with `--theme`. Custom image import is deferre
 
 | Logical input | Default key | In gameplay |
 | --- | --- | --- |
-| D-pad Left/Right | Left/Right arrows | Previous/next pile; clamp at area edges |
-| D-pad Up/Down | Up/Down arrows | Toward pile top / bottom of movable face-up run |
+| D-pad Left/Right | Left/Right arrows | Spatially adjacent visible pile/card; wraps at row edges |
+| D-pad Up/Down | Up/Down arrows | Spatially up/down between tableau cards and the upper row |
 | B | S | Pick up; attempt longest legal suffix placement; source pile cancels |
 | A | D | Carry waste top at current cursor; while holding cancel and return to source |
 | X | W | Move selected single eligible card to first legal foundation |
 | Y | A | Draw one, or recycle when stock empty; ignored while holding |
-| L1/R1 | Left Shift/Space | Cycle Draw → Tableau → Foundations; L1 reverses |
+| L1/R1 | Left Shift/Space | Optional area shortcuts: Draw → Tableau → Foundations; L1 reverses |
 | L2/R2 | Left Ctrl/Left Alt | First/last pile, including during carry |
 | Start | E | Pause / resume |
 | Select | Q | Cancel carry first; otherwise undo one committed action |
 | Quit | Escape | Exit the desktop app |
 
 The area remembers its last pile (initially stock, tableau 0, foundation 0).
-Entering a pile selects the bottom of its maximal face-up run; hidden cards
-are never selectable. Pile arrays use index 0 as bottom and count−1 as top:
-Up increases the index toward pile top, Down decreases toward first face-up.
-During carry, these buttons change destination focus/selection only; the held
-source and candidate stay fixed. Focus uses a yellow outline, becoming green
-when the held candidate has a legal destination suffix.
+Arrow keys are spatial: Left/Right move to neighbouring visible piles/cards with
+wraparound, Up from the top selectable tableau card enters the nearest upper-row
+target, and Down from the upper row returns to the nearest tableau column. Hidden
+cards are never selectable. During carry, these buttons change destination
+focus/selection only; the held source and candidate stay fixed. Focus uses a
+thicker rounded yellow outline, becoming green when the held candidate has a
+legal destination suffix.
 
 Pause uses Up/Down and A (D) to choose Resume, New Game or Quit. New Game requires
 confirmation, with **No selected initially**; arrows toggle No/Yes and A accepts.
@@ -77,9 +78,9 @@ so each physical press generates one action.
 
 ## Carry, feedback and overflow
 
-The full candidate follows the cursor as an overlay. Its unchanged source is
-ghosted to distinguish the pending visual from a committed move. The status
-bar shows HOLD count and the count that PLACE would transfer. Pickup,
+The full candidate follows the cursor as an overlay. Its unchanged source remains
+rendered normally; there is no source ghost while holding. The status bar shows
+HOLD count and the count that PLACE would transfer. Pickup,
 navigation, preview and cancellation do not change game state or undo history.
 B tries the full run then shorter suffixes; one valid placement and any exposed
 hidden-card flip form one atomic undo step. A rejected drop keeps the same
