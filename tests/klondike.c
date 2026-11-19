@@ -160,6 +160,21 @@ static void legality(void) {
     CHECK(g.state.foundations[0].count == 2 && g.state.tableau[0].count == 2);
     undo_to(&g, &before); klondike_dispose(&g);
 
+    /* A foundation ace could otherwise fit another empty foundation, but this
+       direction is forbidden explicitly, even for a single legal-looking ace. */
+    g = (KlondikeGame){0}; foundation(&g.state.foundations[0], CLUBS, 1);
+    complete(&g.state); before = g.state;
+    CHECK(!klondike_can_move(&g.state, FOUNDATION(0), 0, FOUNDATION(1)));
+    CHECK(!klondike_drop(&g, FOUNDATION(0), 0, FOUNDATION(1)));
+    unchanged(&g, &before, NULL, 0); klondike_dispose(&g);
+
+    /* Single-card foundation transfer and hidden-top reveal share one undo. */
+    g = (KlondikeGame){0}; add(&g.state.tableau[0], SPADES, 13, false);
+    add(&g.state.tableau[0], HEARTS, 1, true); complete(&g.state); before = g.state;
+    CHECK(klondike_move(&g, TABLEAU(0), 1, FOUNDATION(0)));
+    CHECK(g.state.tableau[0].cards[0].face_up && g.undo_depth == 1);
+    undo_to(&g, &before); klondike_dispose(&g);
+
     /* A run cannot go to foundation, but longest suffix may move its top ace. */
     g = (KlondikeGame){0}; add(&g.state.tableau[0], SPADES, 4, true);
     add(&g.state.tableau[0], HEARTS, 3, true); add(&g.state.tableau[0], CLUBS, 2, true);
@@ -181,6 +196,10 @@ static void stock_order(void) {
             CHECK(same_card(pile_top(&g.state.waste)->card, order[i]));
             CHECK(g.state.waste.count == i + 1 && g.state.stock.count == 23 - i);
             if (i == 5) { undo_to(&g, &before); CHECK(klondike_draw(&g)); }
+            if (i == 0) {
+                KlondikeState partial = g.state; struct KlondikeUndo *history = g.history;
+                CHECK(!klondike_recycle(&g)); unchanged(&g, &partial, history, g.undo_depth);
+            }
         }
         KlondikeState exhausted = g.state; size_t depth = g.undo_depth; struct KlondikeUndo *history = g.history;
         CHECK(!klondike_draw(&g)); unchanged(&g, &exhausted, history, depth);
@@ -244,8 +263,97 @@ static void winning_and_invalid(void) {
     klondike_deal(NULL,0); klondike_new_game(NULL,0); klondike_dispose(NULL);
     klondike_dispose(&g);
 }
+typedef struct { int kind; KlondikePile from, to; size_t start; } Action;
+static uint32_t random_step(uint32_t *state) {
+    *state ^= *state << 13; *state ^= *state >> 17; *state ^= *state << 5;
+    return *state;
+}
+static void conserved(const KlondikeState *s) {
+    /* Independent test-side identity count, not just the engine validator. */
+    unsigned counts[52] = {0}; size_t total = 0;
+    for (int zone = K_STOCK; zone <= K_TABLEAU; ++zone) {
+        unsigned columns = zone == K_TABLEAU ? 7 : zone == K_FOUNDATION ? 4 : 1;
+        for (unsigned col = 0; col < columns; ++col) {
+            const Pile *p = klondike_pile(s, (KlondikePile){(KlondikeZone)zone,col});
+            CHECK(p && p->count <= 52);
+            for (size_t i = 0; i < p->count; ++i) {
+                Card c = p->cards[i].card; CHECK(card_valid(c));
+                ++counts[(unsigned)c.suit * 13 + c.rank - 1]; ++total;
+            }
+        }
+    }
+    CHECK(total == 52);
+    for (unsigned i = 0; i < 52; ++i) CHECK(counts[i] == 1);
+}
+static bool apply(KlondikeGame *g, Action a) {
+    if (a.kind == 0) return klondike_move(g, a.from, a.start, a.to);
+    if (a.kind == 1) return klondike_draw(g);
+    return klondike_recycle(g);
+}
+static void random_sequences(void) {
+    size_t moves = 0, draws = 0, recycles = 0;
+    for (uint32_t seed = 1; seed <= 32; ++seed) {
+        KlondikeGame g = {0}, replay = {0};
+        klondike_new_game(&g, seed); klondike_new_game(&replay, seed);
+        KlondikeState initial = g.state;
+        uint32_t random = seed * 7919;
+        for (size_t step = 0; step < 1000; ++step) {
+            Action legal[600]; size_t count = 0;
+            for (int zone = K_WASTE; zone <= K_TABLEAU; ++zone) {
+                unsigned columns = zone == K_TABLEAU ? 7 : zone == K_FOUNDATION ? 4 : 1;
+                for (unsigned col = 0; col < columns; ++col) {
+                    KlondikePile from = {(KlondikeZone)zone,col};
+                    const Pile *p = klondike_pile(&g.state, from);
+                    for (size_t start = 0; start < p->count; ++start) {
+                        if (!p->cards[start].face_up) continue;
+                        for (int dz = K_FOUNDATION; dz <= K_TABLEAU; ++dz) {
+                            unsigned destinations = dz == K_FOUNDATION ? 4 : 7;
+                            for (unsigned dc = 0; dc < destinations; ++dc) {
+                                KlondikePile to = {(KlondikeZone)dz,dc};
+                                if (klondike_can_move(&g.state, from, start, to)) {
+                                    CHECK(count < 600); legal[count++] = (Action){0,from,to,start};
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            bool stock_action = g.state.stock.count || g.state.waste.count;
+            if (!count && !stock_action) break;
+            Action a;
+            if (count && (!stock_action || random_step(&random) % 5 != 0)) {
+                a = legal[random_step(&random) % count]; ++moves;
+            } else {
+                a = (Action){.kind = g.state.stock.count ? 1 : 2};
+                if (a.kind == 1) ++draws; else ++recycles;
+            }
+            KlondikeState before = g.state; size_t depth = g.undo_depth;
+            CHECK(apply(&g, a)); CHECK(g.undo_depth == depth + 1);
+            CHECK(apply(&replay, a)); CHECK(same_state(&g.state, &replay.state));
+            conserved(&g.state); CHECK(klondike_valid(&g.state));
+            /* Each successful transaction is reversible; occasionally exercise
+               undo then a new action, discarding the undone branch. */
+            if (step % 29 == 0) {
+                undo_to(&g, &before); CHECK(g.undo_depth == depth);
+                CHECK(apply(&g, a)); CHECK(same_state(&g.state, &replay.state));
+            }
+            KlondikeState snapshot = g.state;
+            struct KlondikeUndo *history = g.history;
+            size_t chosen = SIZE_MAX;
+            CHECK(!klondike_longest_suffix(&g.state, STOCK, 0, TABLEAU(0), &chosen));
+            CHECK(chosen == SIZE_MAX);
+            CHECK(!klondike_drop(&g, STOCK, 0, TABLEAU(0)));
+            unchanged(&g, &snapshot, history, depth + 1);
+        }
+        while (g.undo_depth) { CHECK(klondike_undo(&g)); conserved(&g.state); }
+        CHECK(same_state(&g.state, &initial)); CHECK(!klondike_undo(&g));
+        klondike_dispose(&g); klondike_dispose(&replay);
+    }
+    CHECK(moves > 1000 && draws > 1000 && recycles > 10);
+    printf("random walks: %zu moves, %zu draws, %zu redeals; deterministic replay and full undo passed\n", moves, draws, recycles);
+}
 int main(void) {
-    deals(); suffixes(); legality(); stock_order(); winning_and_invalid();
+    deals(); suffixes(); legality(); stock_order(); winning_and_invalid(); random_sequences();
     puts("klondike: deterministic deals, legality, suffixes, transactions, redeals and undo passed");
     return 0;
 }
