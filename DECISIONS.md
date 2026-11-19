@@ -35,3 +35,28 @@
 - Default 72×100 cards and 24/12-pixel up/down overlap are configurable layout
   values, not final handheld measurements. Stress clipping is intentional and
   does not establish a final overflow strategy.
+
+## 2026-11-19 — M0.1B rules and transaction boundaries
+- Implement the user-approved M0.1B draw-one/unlimited-redeal rules in a separate
+  `klondike` C library. Generic card/deck/pile and M0.1A preview modules stay unchanged.
+- Deal column-wise from the seeded shuffled array: indices 0..27 go to tableau
+  counts 1..7, with only each top face up. Store stock as array indices 51..28
+  bottom-to-top, making array index 28 the first draw.
+- Recycle only with empty stock and nonempty waste: reverse surviving waste
+  into face-down stock. Its oldest surviving card is next to draw. No shuffle,
+  redeal counter or redeal limit is needed. Draw and recycle are separate APIs.
+- Foundation slots acquire their suit with an ace; build one rank at a time.
+  Standard foundation-to-tableau reversals are allowed. Foundation-to-foundation
+  transfers are forbidden, even when an ace could fit an empty foundation.
+- Evaluate exact suffixes and longest legal suffixes without mutation. The
+  selected candidate must itself be a valid face-up run; it cannot expand to
+  include cards below the selected index. Invalid drops preserve state/history.
+- Apply successful changes on a state copy, validate 52 identities and pile
+  invariants, allocate an undo snapshot, then commit. Tableau reveal belongs to
+  the same transaction. Snapshot undo restores orientation and pile order too.
+- Keep owning history separate from the copyable authoritative state; do not
+  store UI focus, held/candidate state or a redundant win flag. Win is derived
+  from four valid 13-card foundations. Full snapshots favor correctness for this
+  small state; history is released by undo, reset or dispose.
+- `CARDGAME_BUILD_PREVIEW=OFF` allows rules/model tests without SDL discovery or
+  linkage. Default builds preserve the M0.1A preview and renderer test suite.
