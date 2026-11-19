@@ -17,3 +17,21 @@
 - Design the core as a reusable engine with independent game modules and shared platform/presentation services.
 - Core concepts must accommodate hands, hidden information, bidding, partnerships and tricks for future games such as 500; do not force all games into solitaire piles.
 - A new game should normally be added as a module/assets without changing core rules logic. Avoid speculative generality: implement shared abstractions incrementally, supported by concrete Klondike tests and future-game interface examples.
+
+## 2026-11-19 — M0.1A implementation
+- Use C17, SDL2, CMake/Ninja and CTest, matching the inspected shared
+  rg35xx-devkit README. Do not copy its Go-specific UI, deployment or controller
+  code into this independent project. Local inspection also confirmed the
+  rg35xxsp-devel platform/input boundary; no device functionality added here.
+- Keep the model/layout library free of SDL. Piles own ordered snapshots with
+  separate face state and checked const reads; no move operations in M0.1A.
+- Seeded Fisher–Yates uses explicit xorshift32 and rejection sampling to avoid
+  platform RNG differences and modulo bias. Seed 0 aliases 0x6d2b79f5; default
+  preview seed 42. OS random seed acquisition stays in the desktop entry point.
+- Render original bitmap lettering/suits and temporary geometric courts without
+  third-party art dependencies. Final traditional court art remains pending.
+- Fix desktop windows to integer multiples of 640×480; render one native surface
+  and scale with nearest-neighbour. Capture that surface directly as BMP.
+- Default 72×100 cards and 24/12-pixel up/down overlap are configurable layout
+  values, not final handheld measurements. Stress clipping is intentional and
+  does not establish a final overflow strategy.

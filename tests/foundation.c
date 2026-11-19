@@ -16,6 +16,12 @@ int main(void) {
         for (int i=0;i<52;++i) CHECK(a[i].rank==b[i].rank && a[i].suit==b[i].suit);
     }
     deck_standard(a); deck_standard(b); deck_shuffle(b,42);
+    const Card expected[]={{SPADES,5},{CLUBS,2},{CLUBS,12},{CLUBS,6},{HEARTS,6}};
+    for (size_t i=0;i<5;++i) CHECK(b[i].suit==expected[i].suit && b[i].rank==expected[i].rank);
+    Card other[52]; deck_standard(other); deck_shuffle(other,43);
+    int seed_changes=0;
+    for (int i=0;i<52;++i) seed_changes+=other[i].rank!=b[i].rank || other[i].suit!=b[i].suit;
+    CHECK(seed_changes>40);
     int changed=0; for (int i=0;i<52;++i) changed+=a[i].rank!=b[i].rank || a[i].suit!=b[i].suit; CHECK(changed>40);
     CardState cs[]={{{CLUBS,1},false},{{HEARTS,13},true}}; Pile p;
     CHECK(pile_init(&p,cs,2)); CHECK(pile_at(&p,0)->card.rank==1); CHECK(pile_top(&p)->card.rank==13);
