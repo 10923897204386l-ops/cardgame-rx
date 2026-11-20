@@ -88,7 +88,8 @@ static void carry_and_flash(void) {
     CHECK(ui.held && play_held_count(&ui,&g.state) == 4);
     key(&ui,&g,&keys,SDL_SCANCODE_RIGHT,120); /* 9C wants only [8H,7C,6D] */
     size_t chosen; CHECK(play_preview(&ui,&g.state,&chosen) && chosen == 2);
-    Rect b = play_held_bounds(&layout,&g.state,&ui); CHECK(b.h == 172); /* entire four-card candidate */
+    Rect b = play_held_bounds(&layout,&g.state,&ui);
+    CHECK(b.h == layout.card_h + 3 * play_held_overlap(&layout,4)); /* entire four-card candidate */
     KlondikeState before = g.state;
     draw(&g.state,&ui,120);
     CHECK(!ui.controls_visible);

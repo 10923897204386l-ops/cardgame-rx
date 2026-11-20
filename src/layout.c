@@ -1,9 +1,10 @@
 #include "layout.h"
-Layout layout_default(void) { return (Layout){72,100,20,16,28,44,164,24,12}; }
+/* Slightly taller status + cards for 640x480 readability on handheld. */
+Layout layout_default(void) { return (Layout){74,104,11,12,34,42,168,26,12}; }
 bool layout_valid(const Layout *l) {
     return l && l->card_w>=60 && l->card_w<=80 && l->card_h>=90 && l->card_h<=120
         && l->margin>=0 && l->margin<=40 && l->column_gap>=0 && l->column_gap<=40
-        && l->status_h>=20 && l->status_h<=40 && l->top_y>=l->status_h
+        && l->status_h>=20 && l->status_h<=48 && l->top_y>=l->status_h
         && l->top_y<=60 && l->tableau_y>=l->top_y+l->card_h
         && l->tableau_y<=200 && l->face_up_overlap>=22 && l->face_up_overlap<=l->card_h
         && l->face_down_overlap>=1 && l->face_down_overlap<=l->card_h

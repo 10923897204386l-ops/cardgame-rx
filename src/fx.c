@@ -131,16 +131,9 @@ static void draw_motion(SDL_Renderer *r, const FxMotion *m, BackTheme theme, uin
     }
     if (m->kind == FX_SETTLE) {
         float bounce = t < 0.7f ? t / 0.7f : 1.f - (t - 0.7f) / 0.3f * 0.15f;
-        b.y = m->to.y - (int)((1.f - bounce) * 10.f);
+        b.y = m->to.y - (int)((1.f - bounce) * 6.f);
     }
-    /* Motion trail ghosts. */
-    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-    for (int g = 3; g >= 1; --g) {
-        float gt = clampf(t - 0.08f * g, 0.f, 1.f);
-        Rect ghost = lerp_rect(m->from, m->to, ease_out(gt));
-        render_round_fill(r, ghost, 8, (SDL_Color){255, 240, 200, (Uint8)(28 / g)});
-    }
-    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+    /* No cream ghost slabs — they smear badly on mali/software compositing. */
     render_card(r, b, &m->card, theme);
 }
 
@@ -154,15 +147,8 @@ void fx_render_over(SDL_Renderer *r, const PlayFX *fx, const PlayUI *ui, const L
                     const KlondikeState *state, BackTheme theme, uint64_t now) {
     (void)theme;
     if (!fx || !fx->enabled) return;
-    /* Held trails. */
-    if (ui && ui->held && fx->trail_count) {
-        SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-        for (unsigned i = fx->trail_count; i-- > 0;) {
-            Uint8 a = (Uint8)(18 + i * 10);
-            render_round_fill(r, fx->trail[i], 8, (SDL_Color){255, 230, 170, a});
-        }
-        SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
-    }
+    /* Held-card trail breadcrumbs disabled: cream card-shaped slabs looked like artifacts. */
+    (void)ui;
     /* Soft menu fade wash. */
     float fade = fx_menu_fade(fx, now);
     if (fade < 0.999f) {

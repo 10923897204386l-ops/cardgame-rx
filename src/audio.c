@@ -36,9 +36,9 @@ static void SDLCALL audio_callback(void *userdata, Uint8 *stream, int len) {
         if (!voice->active || !voice->data) continue;
         for (int i = 0; i < frames; ++i) {
             if (voice->pos >= voice->frames) { voice->active = false; break; }
-            int mixed = out[i] + voice->data[voice->pos++];
-            if (mixed > 32767) mixed = 32767;
-            if (mixed < -32768) mixed = -32768;
+            int mixed = out[i] + (voice->data[voice->pos++] / 2);
+            if (mixed > 24000) mixed = 24000;
+            if (mixed < -24000) mixed = -24000;
             out[i] = (Sint16)mixed;
         }
     }
@@ -63,6 +63,13 @@ static bool load_wav(Sample *sample, const char *path) {
     if (SDL_ConvertAudio(&cvt) != 0) { SDL_free(cvt.buf); return false; }
     sample->frames = (Uint32)(cvt.len_cvt / (int)sizeof(Sint16));
     sample->data = (Sint16 *)cvt.buf;
+    /* Attenuate to avoid clipping/distortion on handheld speakers. */
+    for (Uint32 i = 0; i < sample->frames; ++i) {
+        int s = (sample->data[i] * 45) / 100;
+        if (s > 32767) s = 32767;
+        if (s < -32768) s = -32768;
+        sample->data[i] = (Sint16)s;
+    }
     return sample->frames > 0 && sample->data;
 }
 
