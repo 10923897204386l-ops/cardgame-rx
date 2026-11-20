@@ -40,7 +40,7 @@ static void pause_overlay(SDL_Renderer *r, const PlayUI *ui) {
 }
 void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
                  const Layout *l, BackTheme theme, uint64_t now) {
-    color(r,(SDL_Color){22,83,64,255}); SDL_RenderClear(r);
+    render_table_background(r);
     top_pile_visible(r,&s->stock,layout_slot(l,0,false),ui,(KlondikePile){K_STOCK,0},theme);
     top_pile_visible(r,&s->waste,layout_slot(l,1,false),ui,(KlondikePile){K_WASTE,0},theme);
     for (unsigned f = 0; f < 4; ++f)

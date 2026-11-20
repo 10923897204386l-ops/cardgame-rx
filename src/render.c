@@ -1,5 +1,70 @@
 #include "render.h"
+#include <stdio.h>
+#include <string.h>
 /* Original 5x7 bitmap lettering and geometric art; no external assets. */
+static struct {
+    SDL_Renderer *renderer;
+    SDL_Texture *faces[4][14], *backs[2], *felt, *title;
+} assets;
+static SDL_Texture *load_texture(SDL_Renderer *r, const char *path) {
+    SDL_Surface *s = SDL_LoadBMP(path);
+    SDL_Texture *t = s ? SDL_CreateTextureFromSurface(r,s) : NULL;
+    if (s) SDL_FreeSurface(s);
+    return t;
+}
+static void path_join(char *out, size_t size, const char *dir, const char *rel) {
+    snprintf(out,size,"%s/%s",dir,rel);
+}
+static char rank_code(unsigned rank) {
+    static const char *codes = "?A23456789TJQK";
+    return rank <= 13 ? codes[rank] : '?';
+}
+static char suit_code(Suit suit) {
+    return suit == CLUBS ? 'C' : suit == DIAMONDS ? 'D' : suit == HEARTS ? 'H' : 'S';
+}
+bool render_assets_open(SDL_Renderer *renderer, const char *asset_dir) {
+    render_assets_close();
+    if (!renderer || !asset_dir) return false;
+    assets.renderer = renderer;
+    char path[512], rel[128];
+    path_join(path,sizeof(path),asset_dir,"felt_640x480.bmp");
+    assets.felt = load_texture(renderer,path);
+    path_join(path,sizeof(path),asset_dir,"croupier-rx-title-640x480.bmp");
+    assets.title = load_texture(renderer,path);
+    const char *backs[] = {"backs/back_navy_72x100.bmp","backs/back_wine_72x100.bmp"};
+    for (int i=0;i<2;++i) { path_join(path,sizeof(path),asset_dir,backs[i]); assets.backs[i]=load_texture(renderer,path); }
+    for (Suit suit=CLUBS;suit<=SPADES;++suit) for (unsigned rank=1;rank<=13;++rank) {
+        snprintf(rel,sizeof(rel),"faces_72x100/%c%c.bmp",rank_code(rank),suit_code(suit));
+        path_join(path,sizeof(path),asset_dir,rel);
+        assets.faces[suit][rank]=load_texture(renderer,path);
+    }
+    return assets.felt && assets.title && assets.backs[0] && assets.backs[1] &&
+        assets.faces[CLUBS][1] && assets.faces[SPADES][13];
+}
+void render_assets_close(void) {
+    for (Suit suit=CLUBS;suit<=SPADES;++suit) for (unsigned rank=1;rank<=13;++rank) {
+        if (assets.faces[suit][rank]) SDL_DestroyTexture(assets.faces[suit][rank]);
+        assets.faces[suit][rank]=NULL;
+    }
+    for (int i=0;i<2;++i) { if (assets.backs[i]) SDL_DestroyTexture(assets.backs[i]); assets.backs[i]=NULL; }
+    if (assets.felt) SDL_DestroyTexture(assets.felt);
+    if (assets.title) SDL_DestroyTexture(assets.title);
+    assets.felt = assets.title = NULL;
+    assets.renderer = NULL;
+}
+static bool copy_texture(SDL_Renderer *r, SDL_Texture *texture, Rect b) {
+    if (!texture) return false;
+    SDL_Rect dst={b.x,b.y,b.w,b.h};
+    return SDL_RenderCopy(r,texture,NULL,&dst)==0;
+}
+void render_table_background(SDL_Renderer *r) {
+    if (assets.renderer == r && assets.felt && copy_texture(r,assets.felt,(Rect){0,0,640,480})) return;
+    SDL_SetRenderDrawColor(r,22,83,64,255);
+    SDL_RenderClear(r);
+}
+bool render_title_background(SDL_Renderer *r) {
+    return assets.renderer == r && assets.title && copy_texture(r,assets.title,(Rect){0,0,640,480});
+}
 static const char *glyph(char c) {
     switch(c) {
     case 'A': return "01110100011000111111100011000110001";
@@ -110,6 +175,10 @@ BackTheme back_theme(bool alt) {
     return alt ? (BackTheme){{105,27,50,255},{245,194,119,255},true} : (BackTheme){{23,46,92,255},{148,192,225,255},false};
 }
 void render_card(SDL_Renderer *r,Rect b,const CardState *c,BackTheme theme) {
+    if (assets.renderer == r) {
+        SDL_Texture *texture = c->face_up ? assets.faces[c->card.suit][c->card.rank] : assets.backs[theme.diamonds ? 1 : 0];
+        if (texture && copy_texture(r,texture,b)) return;
+    }
     render_round_fill(r,b,8,(SDL_Color){20,28,28,255});
     render_round_fill(r,(Rect){b.x+1,b.y+1,b.w-2,b.h-2},7,(SDL_Color){255,249,226,255});
     if (!c->face_up) {
@@ -151,7 +220,7 @@ static void slot(SDL_Renderer *r,Rect b) {
     color(r,(SDL_Color){119,163,137,255}); SDL_Rect s={b.x,b.y,b.w,b.h}; SDL_RenderDrawRect(r,&s);
 }
 void render_scene(SDL_Renderer *r,const Scene *s,const Layout *l,BackTheme theme,bool stress) {
-    color(r,(SDL_Color){22,83,64,255}); SDL_RenderClear(r);
+    render_table_background(r);
     color(r,(SDL_Color){16,34,32,255}); fill(r,0,0,640,l->status_h);
     color(r,(SDL_Color){255,249,226,255});
     render_text(r,12,7,stress?"CARDGAME RX - STRESS PREVIEW":"CARDGAME RX - STATIC PREVIEW",2);

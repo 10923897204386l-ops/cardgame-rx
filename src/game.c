@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef CARDGAME_ASSET_DIR
+#define CARDGAME_ASSET_DIR "assets/runtime"
+#endif
 
 static void usage(void) {
     puts("cardgame [--seed N|random] [--scale 1..4] [--theme blue|wine]\n"
@@ -56,6 +59,7 @@ int main(int argc, char **argv) {
     KlondikeGame game = {0}; klondike_set_undo_limit(&game,undo_limit); klondike_new_game(&game,seed);
     PlayUI ui; play_init(&ui,&game.state,seed); Layout layout = layout_default();
     if (!window || !screen || !surface || !canvas || !texture) { result = 1; goto cleanup; }
+    (void)render_assets_open(canvas,CARDGAME_ASSET_DIR);
     while (!ui.quit) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) (void)desktop_event(&ui,&game,&keys,&event,SDL_GetTicks64());
@@ -74,6 +78,7 @@ int main(int argc, char **argv) {
 cleanup:
     if (result) fprintf(stderr,"SDL: %s\n",SDL_GetError());
     klondike_dispose(&game);
+    render_assets_close();
     if (texture) SDL_DestroyTexture(texture);
     if (canvas) SDL_DestroyRenderer(canvas);
     if (surface) SDL_FreeSurface(surface);
