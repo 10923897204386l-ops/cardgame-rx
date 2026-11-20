@@ -1,10 +1,10 @@
-# Cardgame-RX
+# Croupier-RX
 
-M0.1C adds playable desktop Klondike to the M0.1A card renderer and M0.1B pure
-rules engine. C17, SDL2 and CMake follow the shared RG35XX Devkit stack. The
-logical canvas is 640×480 with a fixed top status bar and no bottom toolbar.
-Court portraits remain temporary original geometric art. No RG35XXSP build or
-hardware controls have been verified.
+Croupier-RX is a reusable card-game engine for RG35XXSP-class 640×480 devices,
+currently shipping playable desktop Klondike. M0.1D adds the Croupier-RX identity,
+locked Hawaiian casino title art, Go-RX-style menus, Kennard card faces, custom
+backs and a textured green felt table. C17, SDL2 and CMake follow the shared
+RG35XX Devkit stack. No RG35XXSP build or hardware controls have been verified.
 
 ## Build, test and play
 
@@ -30,8 +30,9 @@ a display; rendering tests use offscreen software surfaces, without windows.
 
 Seed 42 is the deterministic default. `random` reads and prints an OS seed for
 replay. Confirmed New Game deals seed+1 (wrapping at 32 bits). `--scale 1..4`
-uses a fixed-size 4:3 window and nearest-neighbour integer scaling. Both blue
-and wine card backs are available with `--theme`. Custom image import is deferred.
+uses a fixed-size 4:3 window and nearest-neighbour integer scaling. The default
+navy and alternate wine card backs are asset-backed; `--theme wine` selects the
+wine back. Custom image import is deferred.
 
 ## Keyboard emulates handheld buttons
 
@@ -58,10 +59,12 @@ focus/selection only; the held source and candidate stay fixed. Focus uses a
 thicker rounded yellow outline, becoming green when the held candidate has a
 legal destination suffix.
 
-Pause uses Up/Down and A (D) to choose Resume, New Game or Quit. New Game requires
-confirmation, with **No selected initially**; arrows toggle No/Yes and A accepts.
-B or Start backs out of confirmation; at the main pause menu B/Start resumes.
-Gameplay actions are gated while paused. Pause preserves a pending carry.
+The app starts on a Croupier-RX main menu with Play, New Game, Options and Quit.
+Pause uses Up/Down and A (D) to choose Resume, New Game, Options or Main Menu.
+New Game and Main Menu require confirmation, with **No selected initially**;
+arrows toggle No/Yes and A accepts. B or Start backs out of confirmation; at the
+main pause menu B/Start resumes. Gameplay actions are gated while paused. Pause
+preserves a pending carry.
 Window close or Escape exits. These physical-key defaults match the shared
 devkit desktop input mapping. Its M key (X) and Ctrl+R debug reload have no
 gameplay binding here; New Game still requires confirmation. T/B preview debug
@@ -76,7 +79,15 @@ Invalid keys and final duplicate assignments are rejected before launch; key
 swaps can be supplied as multiple overrides. OS key-repeat events are ignored,
 so each physical press generates one action.
 
-## Carry, feedback and overflow
+## Artwork, carry, feedback and overflow
+
+The locked 640×480 Croupier-RX title image and complete card pack are documented
+in `assets/source/ASSET_MANIFEST.json`. Runtime uses deterministic BMP copies
+generated from the pinned PNG assets so SDL can load them without a new image
+decoder dependency. Source-controlled provenance includes the Kennard SVG source
+cards, rasterization script, Yusei Magic/Go RX Ink OFL text and the complete asset
+manifest. Menus use the bundled Go RX Ink font derived from Yusei Magic, matching
+the inspected Go-RX convention, with warm light-yellow foreground panels.
 
 The full candidate follows the cursor as an overlay. Its unchanged source remains
 rendered normally; there is no source ghost while holding. The status bar shows
@@ -131,7 +142,8 @@ of window scale, and `--smoke` to present one window frame then exit:
 ```
 
 Prefix capture commands with `SDL_VIDEODRIVER=dummy` when no display is present.
-PNG evidence is in `docs/screenshots/`; M0.1C views are in its `m01c/` subfolder.
+PNG evidence is in `docs/screenshots/`; M0.1C views are in `m01c/` and M0.1D
+views are in `m01d/`.
 The desktop test writes invalid, pause, confirmation, tall, held and win BMP
 fixtures in its build/test working directory. BMP capture adds no image library;
 the committed PNGs are lossless conversions for review.
@@ -143,7 +155,7 @@ the committed PNGs are lossless conversions for review.
 - `klondike.*`: deterministic deal, valid state/win, exact and longest-suffix
   legality, atomic actions, reveal, undo and configurable history budget.
 - `controls.h`: platform-neutral logical inputs; `keyboard.*`: SDL key mapping.
-- `play.*`: Klondike-specific focus, pending carry, pause and timed feedback.
+- `play.*`: Klondike-specific focus, pending carry, menus and timed feedback.
 - `play_view.*`: pure playable layout; `play_render.*`: actual-state presentation.
 - `desktop.*`, `game.c`: SDL event boundary, window, capture and application loop.
 - `scene.*`, `render.*`, `preview.c`: retained static fixture, shared drawing and
@@ -173,5 +185,5 @@ foundations are forbidden. Waste and foundation sources offer only their top
 card. Draw one and reverse surviving waste into face-down stock when stock is
 empty, without shuffling or redeal limits; its oldest surviving card draws next.
 Win is derived from four complete valid foundations. See milestone reports in
-`tasks/` for exact verification and limits. M0.1D and device packaging are not
-part of this implementation.
+`tasks/` for exact verification and limits. Device packaging is not part of this
+implementation.
