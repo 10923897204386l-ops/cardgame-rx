@@ -37,6 +37,12 @@ Updated: 2026-11-20.
   package (`croupier_m01f_approved_assets.zip`): unchanged felt, warm-ivory
   Kennard faces, tropical blue/gold back, and runtime card shadows. Before/after
   screenshots are in `docs/screenshots/m01f/`.
+- M0.1H is implemented on `feat/m0-1h-saves-card-lighting`: versioned atomic
+  autosave/manual-slot save files, Continue Game, Save/Load slot menus,
+  Select+Start confirmed quit with autosave, simplified Deal/Discard top bar,
+  darker recessed felt empty piles, regenerated warm butter-yellow card fronts,
+  and CC BY 4.0 Shane Ivers menu music with fade-out on gameplay. Real 640×480
+  evidence is in `docs/screenshots/m01h/`.
 - No RG35XXSP hardware testing, device mapping or packaging has been performed.
 
 ## Goal
@@ -44,15 +50,20 @@ Reusable card-game engine for RG35XXSP; Klondike first, 500 later. Keep rules,
 input, transient interaction and rendering separate.
 
 ## Current milestone
-M0.1G animation/audio polish is implemented on
-`feat/m0-1g-animation-audio` (from the M0.1F art branch). See
-`tasks/M0.1G-REPORT.md`. Music is intentionally not committed pending an approved
-licensed shortlist. M0.1F PR #7 remains open separately.
+M0.1H save/resume and card-lighting polish is implemented on
+`feat/m0-1h-saves-card-lighting`. See `tasks/M0.1H-REPORT.md`. Desktop and
+SDL-free regression suites pass locally after integrating the save system,
+updated menu/quit flows, refreshed card-face lighting, darker felt empty piles,
+and licensed menu music.
 
 ## Known limits
 - Tall-column layout is a readable prototype, not final device-polished scrolling.
-- Desktop SFX exist; music and physical device support are absent. Saves absent.
+- Save location is XDG/Linux-desktop verified only; handheld writable-path
+  verification remains outstanding.
+- Menu music and save flows are desktop-tested only; no physical-device audio or
+  file-system validation has been performed.
 
 ## One next action
-Review M0.1G screenshots/SFX and decide music shortlist approval. Keep M0.1F and
-M0.1G PRs unmerged until accepted. Do not begin device packaging without approval.
+Review `docs/screenshots/m01h/` and the save/music behavior on the
+`feat/m0-1h-saves-card-lighting` branch, then open/iterate on the review PR.
+Do not begin device packaging or merge without approval.

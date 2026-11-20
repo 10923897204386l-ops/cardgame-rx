@@ -1,4 +1,6 @@
 #include "play_render.h"
+#include "save.h"
+#include <time.h>
 #include "fx.h"
 #include <stdio.h>
 #include <string.h>
@@ -11,18 +13,20 @@ static void shadow(SDL_Renderer *r, Rect b, int alpha) {
     render_round_fill(r,(Rect){b.x+1,b.y+2,b.w,b.h},8,(SDL_Color){0,0,0,alpha/2});
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
 }
-/* Soft recessed empty-slot treatment: layered translucent shade (cheap blur stand-in). */
+/* Recessed darker-felt empty pile base: same fabric family, ~15% darker. */
 static void empty_slot(SDL_Renderer *r, Rect b, const char *label) {
-    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
-    render_round_fill(r,b,10,(SDL_Color){0,18,8,58});
-    render_round_fill(r,(Rect){b.x+2,b.y+2,b.w-4,b.h-4},9,(SDL_Color){0,12,6,72});
-    render_round_fill(r,(Rect){b.x+5,b.y+5,b.w-10,b.h-10},8,(SDL_Color){4,28,14,48});
-    render_round_fill(r,(Rect){b.x+8,b.y+8,b.w-16,b.h-16},7,(SDL_Color){12,42,24,36});
-    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
-    render_round_outline(r,b,10,1,(SDL_Color){86,132,108,255});
-    render_round_outline(r,(Rect){b.x+1,b.y+1,b.w-2,b.h-2},9,1,(SDL_Color){150,190,160,255});
-    color(r,(SDL_Color){214,232,214,255});
-    if (label) render_text(r,b.x+8,b.y+44,label,1);
+    /* Stronger recessed well so center samples clearly darker than surrounding felt. */
+    render_round_fill(r, b, 10, (SDL_Color){4, 28, 18, 255});
+    render_round_fill(r, (Rect){b.x + 2, b.y + 2, b.w - 4, b.h - 4}, 8, (SDL_Color){8, 36, 24, 255});
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+    render_round_fill(r, (Rect){b.x + 1, b.y + 1, b.w - 2, 11}, 8, (SDL_Color){0, 0, 0, 84});
+    render_round_fill(r, (Rect){b.x + 4, b.y + 4, b.w - 8, b.h - 8}, 7, (SDL_Color){0, 0, 0, 34});
+    render_round_fill(r, (Rect){b.x + 5, b.y + b.h - 13, b.w - 10, 7}, 5, (SDL_Color){255, 255, 255, 12});
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+    render_round_outline(r, b, 10, 1, (SDL_Color){16, 54, 38, 255});
+    render_round_outline(r, (Rect){b.x + 1, b.y + 1, b.w - 2, b.h - 2}, 9, 1, (SDL_Color){4, 18, 12, 255});
+    color(r, (SDL_Color){186, 214, 186, 255});
+    if (label) render_text(r, b.x + 8, b.y + 44, label, 1);
 }
 static void outline(SDL_Renderer *r, Rect b, int expand, SDL_Color c) {
     render_round_outline(r,(Rect){b.x-expand,b.y-expand,b.w+2*expand,b.h+2*expand},8,1,c);
@@ -172,51 +176,96 @@ static bool dpad_default(const KeyboardMap *keys) {
 static void controls_bar(SDL_Renderer *r, const KeyboardMap *keys) {
     char label[96];
     status_bar(r,(Rect){6,450,628,26});
-    hud_text(r,46,456,dpad_default(keys) ? "ARROWS" : "D-PAD",82,0.46f);
+    hud_text(r,40,456,dpad_default(keys) ? "ARROWS" : "D-PAD",70,0.40f);
     snprintf(label,sizeof(label),"%s PICK",key_name(keys,INPUT_B));
-    hud_text(r,124,456,label,78,0.42f);
-    snprintf(label,sizeof(label),"%s CANCEL",key_name(keys,INPUT_A));
-    hud_text(r,208,456,label,88,0.40f);
+    hud_text(r,108,456,label,70,0.36f);
     snprintf(label,sizeof(label),"%s DRAW",key_name(keys,INPUT_Y));
-    hud_text(r,302,456,label,82,0.40f);
+    hud_text(r,178,456,label,70,0.36f);
     snprintf(label,sizeof(label),"%s ACE",key_name(keys,INPUT_X));
-    hud_text(r,382,456,label,72,0.40f);
+    hud_text(r,244,456,label,60,0.36f);
     snprintf(label,sizeof(label),"%s HELP",key_name(keys,INPUT_SELECT));
-    hud_text(r,462,456,label,74,0.38f);
+    hud_text(r,312,456,label,66,0.34f);
+    snprintf(label,sizeof(label),"%s PAUSE",key_name(keys,INPUT_START));
+    hud_text(r,386,456,label,72,0.34f);
     snprintf(label,sizeof(label),"%s+%s UNDO",key_name(keys,INPUT_L2),key_name(keys,INPUT_SELECT));
-    hud_text(r,560,456,label,132,0.38f);
+    hud_text(r,480,456,label,110,0.32f);
+    snprintf(label,sizeof(label),"%s+%s QUIT",key_name(keys,INPUT_SELECT),key_name(keys,INPUT_START));
+    hud_text(r,590,456,label,100,0.32f);
+}
+static void format_slot_line(char *out, size_t n, unsigned slot) {
+    SaveMeta meta;
+    if (save_probe_slot(slot, &meta) != SAVE_OK) {
+        snprintf(out, n, "%u  Empty", slot + 1);
+        return;
+    }
+    struct tm tm;
+    time_t t = meta.saved_at;
+    localtime_r(&t, &tm);
+    char when[32];
+    strftime(when, sizeof when, "%m-%d %H:%M", &tm);
+    unsigned sec = meta.elapsed_ms / 1000u;
+    snprintf(out, n, "%u  %s  M%u  %um%02u  Draw1",
+             slot + 1, when, meta.move_count, sec / 60u, sec % 60u);
 }
 static void menu_overlay(SDL_Renderer *r, const PlayUI *ui) {
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
     color(r,(SDL_Color){0,0,0,ui->screen == MENU_MAIN ? 40 : 165}); fill(r,(Rect){0,0,640,480});
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
-    if (ui->screen == MENU_CONFIRM_NEW || ui->screen == MENU_CONFIRM_MAIN) {
-        menu_panel(r,(Rect){115,145,410,170});
+    if (ui->screen == MENU_CONFIRM_NEW || ui->screen == MENU_CONFIRM_MAIN ||
+        ui->screen == MENU_CONFIRM_OVERWRITE || ui->screen == MENU_CONFIRM_LOAD ||
+        ui->screen == MENU_CONFIRM_QUIT) {
+        menu_panel(r,(Rect){100,140,440,180});
         color(r,(SDL_Color){43,35,24,255});
-        menu_text(r,320,166,ui->screen == MENU_CONFIRM_MAIN ? "RETURN TO MAIN MENU" : "DISCARD AND DEAL NEW GAME",360,0.9f);
-        menu_text(r,320,226,ui->confirm_yes ? "NO    -YES-" : "-NO-    YES",260,1.0f);
+        const char *title = "CONFIRM";
+        if (ui->screen == MENU_CONFIRM_MAIN) title = "SAVE AND RETURN TO MENU";
+        else if (ui->screen == MENU_CONFIRM_NEW) title = "DISCARD AND DEAL NEW GAME";
+        else if (ui->screen == MENU_CONFIRM_OVERWRITE) title = "OVERWRITE SAVE SLOT";
+        else if (ui->screen == MENU_CONFIRM_LOAD) title = "LOAD AND REPLACE GAME";
+        else if (ui->screen == MENU_CONFIRM_QUIT) title = "QUIT GAME";
+        menu_text(r,320,160,title,400,0.82f);
+        menu_text(r,320,230,ui->confirm_yes ? "NO    -YES-" : "-NO-    YES",260,1.0f);
+    } else if (ui->screen == MENU_SAVE_ERROR || ui->screen == MENU_QUIT_SAVE_ERROR) {
+        menu_panel(r,(Rect){90,120,460,220});
+        color(r,(SDL_Color){43,35,24,255});
+        menu_text(r,320,140,"SAVE FAILED",360,0.9f);
+        menu_text(r,320,178,save_status_text((SaveStatus)ui->save_error),400,0.7f);
+        const char *choices[] = {"RETRY", "CANCEL", "QUIT WITHOUT SAVING"};
+        for (unsigned i = 0; i < 3; ++i)
+            menu_item_at(r, (Rect){90,120,460,220}, 220 + (int)i * 32, choices[i], ui->quit_choice == i);
     } else if (ui->screen == MENU_OPTIONS) {
         menu_panel(r,(Rect){170,150,300,160});
         color(r,(SDL_Color){43,35,24,255});
         menu_text(r,320,168,"OPTIONS",240,1.0f);
         menu_text(r,320,220,"No options yet",240,0.8f);
+    } else if (ui->screen == MENU_SAVE_SLOTS || ui->screen == MENU_LOAD_SLOTS) {
+        menu_panel(r,(Rect){70,40,500,400});
+        color(r,(SDL_Color){43,35,24,255});
+        menu_text(r,320,52, ui->screen == MENU_SAVE_SLOTS ? "SAVE GAME" : "LOAD GAME", 360, 0.8f);
+        for (unsigned i = 0; i < SAVE_MANUAL_SLOTS; ++i) {
+            char line[96];
+            format_slot_line(line, sizeof line, i);
+            menu_item_at(r, (Rect){70,40,500,400}, 88 + (int)i * 32, line, ui->slot == i);
+        }
     } else if (ui->screen == MENU_MAIN) {
-        /* Compact panel over title art: no duplicate title, no bitmap key hints. */
-        Rect panel = {210, 188, 220, 168};
+        Rect panel = {200, 170, 240, 210};
         menu_panel(r, panel);
-        const char *main_items[] = {"CONTINUE","NEW GAME","OPTIONS","QUIT"};
-        int y0 = panel.y + 22;
-        for (unsigned i = 0; i < 4; ++i)
-            menu_item_at(r, panel, y0 + (int)i * 36, main_items[i], ui->menu == i);
-    } else {
-        Rect panel = {150, 112, 340, 250};
+        const char *main_items[] = {"CONTINUE GAME","NEW GAME","LOAD GAME","OPTIONS","QUIT"};
+        int y0 = panel.y + 18;
+        for (unsigned i = 0; i < 5; ++i) {
+            char label[48];
+            if (i == 0 && !ui->continue_available) snprintf(label, sizeof label, "CONTINUE (NONE)");
+            else snprintf(label, sizeof label, "%s", main_items[i]);
+            menu_item_at(r, panel, y0 + (int)i * 36, label, ui->menu == i);
+        }
+    } else if (ui->screen == MENU_PAUSE) {
+        Rect panel = {150, 90, 340, 300};
         menu_panel(r, panel);
         color(r,(SDL_Color){43,35,24,255});
-        menu_text(r,320,128,"PAUSED",280,0.74f);
-        const char *pause_items[] = {"RESUME","NEW GAME","OPTIONS","MAIN MENU"};
-        int y0 = 168;
-        for (unsigned i = 0; i < 4; ++i)
-            menu_item_at(r, panel, y0 + (int)i * 40, pause_items[i], ui->menu == i);
+        menu_text(r,320,104,"PAUSED",280,0.74f);
+        const char *pause_items[] = {"RESUME","SAVE GAME","LOAD GAME","NEW GAME","OPTIONS","MAIN MENU"};
+        int y0 = 148;
+        for (unsigned i = 0; i < 6; ++i)
+            menu_item_at(r, panel, y0 + (int)i * 36, pause_items[i], ui->menu == i);
     }
 }
 void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
@@ -289,25 +338,16 @@ void play_render_fx(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
         /* With FX enabled, restrained shimmer/cascade is drawn in fx_render_over. */
     }
     if (fx && ui->held) fx_note_held(fx, play_held_bounds(l,s,ui), now);
-    /* Fixed status strip, always on top of table/carry. */
+    /* Top status: exactly Klondike, Deal (stock), Discard (waste). */
     status_bar(r,(Rect){4,2,632,l->status_h-2});
     char label[96];
-    KlondikePile ref = play_focus(ui);
-    if (ref.zone == K_TABLEAU) snprintf(label,sizeof(label),"TAB %u",ref.index+1);
-    else if (ref.zone == K_FOUNDATION) snprintf(label,sizeof(label),"ACE %u",ref.index+1);
-    else snprintf(label,sizeof(label),"%s",ref.zone == K_STOCK ? "STOCK" : "WASTE");
-    /* Top status text ~30% smaller than prior large bake zoom. */
-    hud_text(r,78,8,label,130,0.74f);
-    snprintf(label,sizeof(label),"SEED %u   STK %zu",ui->seed,s->stock.count);
-    hud_text(r,250,8,label,220,0.66f);
-    if (ui->held) {
-        size_t n = play_held_count(ui,s);
-        snprintf(label,sizeof(label),"HOLD %zu",n);
-        hud_text(r,420,8,label,120,0.70f);
-    }
-    const char *msg = play_message(ui,now);
-    if (msg && msg[0]) hud_text(r,540,8,msg,160,0.66f);
-    if (klondike_won(s)) hud_text(r,320,l->status_h/2 - 2,"YOU WIN",200,0.77f);
+    hud_text(r,90,8,"Klondike",150,0.78f);
+    snprintf(label,sizeof(label),"Deal: %zu", s->stock.count);
+    hud_text(r,300,8,label,180,0.78f);
+    snprintf(label,sizeof(label),"Discard: %zu", s->waste.count);
+    hud_text(r,510,8,label,200,0.78f);
+    if (klondike_won(s) && ui->screen == MENU_PLAYING)
+        hud_text(r,320, l->status_h + 8, "YOU WIN", 200, 0.70f);
     if (ui->screen != MENU_PLAYING) menu_overlay(r,ui);
     if (fx) {
         fx_set_victory(fx, klondike_won(s) && ui->screen == MENU_PLAYING, now);

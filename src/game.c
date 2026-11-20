@@ -2,6 +2,7 @@
 #include "play_render.h"
 #include "play_view.h"
 #include "audio.h"
+#include "save.h"
 #include "fx.h"
 #include "rx_input.h"
 #include "sdl_compat.h"
@@ -19,7 +20,7 @@
 static void usage(void) {
     puts("cardgame [--seed N|random] [--scale 1..4] [--theme blue|wine]\n"
          "         [--bind action=KeyName] [--undo-limit N] [--capture FILE.bmp] [--smoke]\n"
-         "         [--no-anim] [--no-audio]\n"
+         "         [--no-anim] [--no-audio] [--mute-music] [--music-volume 0..100]\n"
          "Devkit keys: arrows navigate, S=B, D=A/cancel, W=X/foundation, A=Y/stock,\n"
          "Left Shift/Space=L1/R1, Left Ctrl/Left Alt=L2/R2, E=Start, Q=Select, Escape=Quit.\n"
          "RG35XXSP: ANBERNIC-keys joystick (D-pad hat, A/B/X/Y/L/R/Start/Select).\n"
@@ -74,9 +75,56 @@ static void handle_play_event(PlayEvent pe, PlayUI *ui, KlondikeGame *game, Play
     }
 }
 
+
+static SaveStatus write_autosave_now(PlayUI *ui, KlondikeGame *game) {
+    play_tick(ui, 0); /* flush not needed without now; elapsed already tracked */
+    SaveMeta meta;
+    play_fill_meta(ui, &meta);
+    meta.undo_limit = (uint32_t)game->undo_limit;
+    SaveBlob blob;
+    if (!save_capture(&blob, game, &meta)) return SAVE_ERR_STATE;
+    return save_write_autosave(&blob);
+}
+
+static SaveStatus write_slot_now(PlayUI *ui, KlondikeGame *game, unsigned slot) {
+    SaveMeta meta;
+    play_fill_meta(ui, &meta);
+    meta.undo_limit = (uint32_t)game->undo_limit;
+    SaveBlob blob;
+    if (!save_capture(&blob, game, &meta)) return SAVE_ERR_STATE;
+    return save_write_slot(slot, &blob);
+}
+
+static bool load_autosave_now(PlayUI *ui, KlondikeGame *game, uint64_t now) {
+    SaveBlob blob;
+    if (save_read_autosave(&blob) != SAVE_OK) return false;
+    SaveMeta meta;
+    if (!save_restore(&blob, game, &meta)) return false;
+    play_init(ui, &game->state, meta.seed);
+    play_apply_loaded(ui, &meta, now);
+    return true;
+}
+
+static bool load_slot_now(PlayUI *ui, KlondikeGame *game, unsigned slot, uint64_t now) {
+    SaveBlob blob;
+    if (save_read_slot(slot, &blob) != SAVE_OK) return false;
+    SaveMeta meta;
+    if (!save_restore(&blob, game, &meta)) return false;
+    play_init(ui, &game->state, meta.seed);
+    play_apply_loaded(ui, &meta, now);
+    return true;
+}
+
+static void refresh_continue(PlayUI *ui) {
+    SaveMeta meta;
+    play_set_continue_available(ui, save_probe_autosave(&meta) == SAVE_OK);
+}
+
+
 int main(int argc, char **argv) {
     uint32_t seed = 42; int scale = 1; bool alternate = false, smoke = false;
-    bool anim = true, sound = true;
+    bool anim = true, sound = true, music = true;
+    int music_volume_pct = 42;
     const char *capture = NULL; size_t undo_limit = 256;
     KeyboardMap keys = keyboard_default();
     for (int i = 1; i < argc; ++i) {
@@ -84,6 +132,7 @@ int main(int argc, char **argv) {
         if (!strcmp(argv[i], "--smoke")) smoke = true;
         else if (!strcmp(argv[i], "--no-anim")) anim = false;
         else if (!strcmp(argv[i], "--no-audio")) sound = false;
+        else if (!strcmp(argv[i], "--mute-music")) music = false;
         else if (!strcmp(argv[i], "--capture") && i + 1 < argc) capture = argv[++i];
         else if (!strcmp(argv[i], "--bind") && i + 1 < argc) {
             if (!keyboard_bind(&keys, argv[++i])) { fputs("Invalid key binding\n", stderr); return 2; }
@@ -91,8 +140,10 @@ int main(int argc, char **argv) {
             const char *theme = argv[++i];
             if (strcmp(theme, "blue") && strcmp(theme, "wine")) { usage(); return 2; }
             alternate = !strcmp(theme, "wine");
-        } else if ((!strcmp(argv[i], "--seed") || !strcmp(argv[i], "--scale") || !strcmp(argv[i], "--undo-limit")) && i + 1 < argc) {
+        } else if ((!strcmp(argv[i], "--seed") || !strcmp(argv[i], "--scale") ||
+                    !strcmp(argv[i], "--undo-limit") || !strcmp(argv[i], "--music-volume")) && i + 1 < argc) {
             bool is_seed = !strcmp(argv[i], "--seed"), is_limit = !strcmp(argv[i], "--undo-limit");
+            bool is_music_volume = !strcmp(argv[i], "--music-volume");
             const char *value = argv[++i];
             if (is_seed && !strcmp(value, "random")) {
                 FILE *f = fopen("/dev/urandom", "rb");
@@ -104,10 +155,15 @@ int main(int argc, char **argv) {
             } else {
                 char *end; errno = 0; unsigned long n = strtoul(value, &end, 10);
                 if (errno || !*value || *end || *value == '-' || (!is_limit && n > UINT32_MAX) ||
-                    (is_limit && n > SIZE_MAX) || (!is_seed && !is_limit && (n < 1 || n > 4))) {
+                    (is_limit && n > SIZE_MAX) ||
+                    (!is_seed && !is_limit && !is_music_volume && (n < 1 || n > 4)) ||
+                    (is_music_volume && n > 100)) {
                     usage(); return 2;
                 }
-                if (is_seed) seed = (uint32_t)n; else if (is_limit) undo_limit = (size_t)n; else scale = (int)n;
+                if (is_seed) seed = (uint32_t)n;
+                else if (is_limit) undo_limit = (size_t)n;
+                else if (is_music_volume) music_volume_pct = (int)n;
+                else scale = (int)n;
             }
         } else { usage(); return 2; }
     }
@@ -143,7 +199,8 @@ int main(int argc, char **argv) {
                                                      SDL_TEXTUREACCESS_STREAMING, 640, 480) : NULL;
     int result = 0;
     KlondikeGame game = {0}; klondike_set_undo_limit(&game, undo_limit); klondike_new_game(&game, seed);
-    PlayUI ui; play_init(&ui, &game.state, seed); Layout layout = layout_default();
+    PlayUI ui; play_init(&ui, &game.state, seed); refresh_continue(&ui);
+    Layout layout = layout_default();
     PlayFX fx; fx_init(&fx, anim);
     RxInput rx; rx_input_init(&rx);
     fprintf(stderr, "input: joysticks=%d pad=%s\n", SDL_NumJoysticks(),
@@ -155,12 +212,13 @@ int main(int argc, char **argv) {
         fprintf(stderr, "logical size: %s\n", SDL_GetError());
     (void)render_assets_open(canvas, CARDGAME_ASSET_DIR);
     (void)render_menu_font_open(canvas, CARDGAME_FONT_PATH);
-    char sfx_dir[512];
-    snprintf(sfx_dir, sizeof(sfx_dir), "%s/sfx", CARDGAME_ASSET_DIR);
     if (sound) {
-        if (!audio_open(sfx_dir))
+        if (!audio_open(CARDGAME_ASSET_DIR))
             fprintf(stderr, "audio: unavailable (%s)\n", SDL_GetError());
     } else audio_set_enabled(false);
+    audio_set_music_enabled(music);
+    audio_set_music_volume((float)music_volume_pct / 100.0f);
+    audio_set_menu_music_active(true);
 
     if (sound && audio_enabled()) { audio_play(SFX_SHUFFLE); audio_play(SFX_DECK_TAP); }
     deal_intro_fx(&fx, &game.state, &layout, SDL_GetTicks64());
@@ -174,6 +232,54 @@ int main(int argc, char **argv) {
             PlayScreen before = ui.screen;
             KlondikePile focus_before = play_focus(&ui);
             PlayEvent pe = desktop_event_rx(&ui, &game, &keys, &rx, &event, now);
+            if (pe == PLAY_SAVE_NEEDED) {
+                play_tick(&ui, now);
+                SaveStatus st = SAVE_OK;
+                bool to_main = (ui.screen == MENU_CONFIRM_MAIN);
+                bool to_quit = ui.exit_app || ui.screen == MENU_CONFIRM_QUIT ||
+                               ui.screen == MENU_QUIT_SAVE_ERROR;
+                bool slot_save = (ui.screen == MENU_SAVE_SLOTS || ui.screen == MENU_CONFIRM_OVERWRITE);
+                if (slot_save) st = write_slot_now(&ui, &game, ui.slot);
+                else st = write_autosave_now(&ui, &game);
+                if (st != SAVE_OK) {
+                    ui.save_error = (int)st;
+                    ui.quit_choice = 0;
+                    ui.screen = to_quit ? MENU_QUIT_SAVE_ERROR : MENU_SAVE_ERROR;
+                    pe = PLAY_ERROR;
+                } else {
+                    ui.dirty = false;
+                    if (slot_save) {
+                        ui.screen = MENU_PAUSE;
+                        ui.paused = true;
+                        pe = PLAY_AUTOSAVED;
+                    } else if (to_quit) {
+                        ui.quit = true;
+                        pe = PLAY_QUIT;
+                    } else if (to_main || !ui.exit_app) {
+                        ui.screen = MENU_MAIN;
+                        ui.paused = true;
+                        ui.held = false;
+                        ui.menu = 0;
+                        refresh_continue(&ui);
+                        pe = PLAY_AUTOSAVED;
+                    }
+                }
+            } else if (pe == PLAY_LOADED) {
+                bool from_continue = (before == MENU_MAIN && ui.menu == 0 &&
+                                      ui.screen != MENU_LOAD_SLOTS &&
+                                      ui.screen != MENU_CONFIRM_LOAD);
+                bool ok = from_continue ? load_autosave_now(&ui, &game, now)
+                                        : load_slot_now(&ui, &game, ui.slot, now);
+                if (!ok) {
+                    pe = PLAY_ERROR;
+                    ui.screen = before;
+                } else {
+                    announced_win = false;
+                    fx_clear(&fx);
+                    deal_intro_fx(&fx, &game.state, &layout, now);
+                    pe = PLAY_LOADED;
+                }
+            }
             handle_play_event(pe, &ui, &game, &fx, &layout, sound && audio_enabled(), now, before, focus_before);
             if (pe == PLAY_NEW_GAME) announced_win = false;
             if (pe != PLAY_NONE)
@@ -181,6 +287,8 @@ int main(int argc, char **argv) {
         }
         if (ui.quit) break;
         now = SDL_GetTicks64();
+        play_tick(&ui, now);
+        audio_set_menu_music_active(ui.screen == MENU_MAIN);
         if (klondike_won(&game.state) && ui.screen == MENU_PLAYING && !announced_win) {
             announced_win = true;
             if (sound && audio_enabled()) audio_play(SFX_WIN);

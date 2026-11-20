@@ -51,4 +51,9 @@ bool klondike_undo(KlondikeGame *game);
 /* Retain the newest limit transactions, discarding older snapshots immediately.
    Zero restores unlimited history. This setting survives new_game/dispose. */
 void klondike_set_undo_limit(KlondikeGame *game, size_t limit);
+/* Export up to max_count newest undo snapshots (index 0 = oldest of the export).
+   Returns number written. Does not include the live state. */
+size_t klondike_export_undo(const KlondikeGame *game, KlondikeState *out, size_t max_count);
+/* Replace undo history with snapshots[0..count) oldest-first. Live state unchanged. */
+bool klondike_import_undo(KlondikeGame *game, const KlondikeState *snapshots, size_t count);
 #endif

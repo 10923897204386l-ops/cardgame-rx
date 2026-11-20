@@ -17,4 +17,8 @@ void audio_close(void);
 void audio_set_enabled(bool enabled);
 bool audio_enabled(void);
 void audio_play(SfxId id);
+void audio_set_music_enabled(bool enabled);
+bool audio_music_enabled(void);
+void audio_set_music_volume(float volume_0_to_1);
+void audio_set_menu_music_active(bool active);
 #endif

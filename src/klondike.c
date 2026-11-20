@@ -217,3 +217,62 @@ void klondike_set_undo_limit(KlondikeGame *g, size_t limit) {
     }
     g->undo_depth = limit;
 }
+
+size_t klondike_export_undo(const KlondikeGame *g, KlondikeState *out, size_t max_count) {
+    if (!g || !out || !max_count) return 0;
+    size_t depth = g->undo_depth;
+    if (depth > max_count) depth = max_count;
+    if (!depth) return 0;
+    /* history is newest-first; skip older nodes beyond depth, then fill oldest-first. */
+    const struct KlondikeUndo *node = g->history;
+    size_t skip = g->undo_depth > depth ? g->undo_depth - depth : 0;
+    while (skip && node) { node = node->previous; --skip; }
+    /* node now at the oldest of the selected window if we walked from newest...
+       Actually history is newest at head. To take newest `depth` snapshots:
+       walk head for `depth` nodes into a temp newest-first, reverse into out. */
+    node = g->history;
+    size_t n = 0;
+    const struct KlondikeUndo *window[256];
+    size_t wcap = depth < 256 ? depth : 256;
+    while (node && n < wcap) {
+        window[n++] = node;
+        node = node->previous;
+    }
+    for (size_t i = 0; i < n; ++i)
+        out[i] = window[n - 1 - i]->state;
+    return n;
+}
+
+bool klondike_import_undo(KlondikeGame *g, const KlondikeState *snapshots, size_t count) {
+    if (!g) return false;
+    if (count && !snapshots) return false;
+    for (size_t i = 0; i < count; ++i)
+        if (!klondike_valid(&snapshots[i])) return false;
+    while (g->history) {
+        struct KlondikeUndo *undo = g->history;
+        g->history = undo->previous;
+        free(undo);
+    }
+    g->undo_depth = 0;
+    struct KlondikeUndo *head = NULL;
+    for (size_t i = 0; i < count; ++i) {
+        struct KlondikeUndo *node = malloc(sizeof(*node));
+        if (!node) {
+            while (head) {
+                struct KlondikeUndo *p = head->previous;
+                free(head);
+                head = p;
+            }
+            g->history = NULL;
+            g->undo_depth = 0;
+            return false;
+        }
+        node->state = snapshots[i];
+        node->previous = head;
+        head = node;
+        ++g->undo_depth;
+    }
+    g->history = head;
+    if (g->undo_limit) klondike_set_undo_limit(g, g->undo_limit);
+    return true;
+}

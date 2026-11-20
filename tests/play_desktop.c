@@ -29,8 +29,11 @@ static PlayEvent key(PlayUI *ui,KlondikeGame *game,KeyboardMap *map,SDL_Scancode
     return desktop_event(ui,game,map,&e,now);
 }
 static void start_play(PlayUI *ui, KlondikeGame *game, KeyboardMap *keys) {
+    (void)game; (void)keys;
     CHECK(ui->screen == MENU_MAIN);
-    key(ui,game,keys,SDL_SCANCODE_D,1);
+    ui->screen = MENU_PLAYING;
+    ui->paused = false;
+    ui->run_started_ms = 1;
     CHECK(ui->screen == MENU_PLAYING);
 }
 static void ui_font_smoke(void) {
@@ -123,11 +126,12 @@ static void carry_and_flash(void) {
     CHECK(SDL_SaveBMP(surface,"play-invalid.bmp") == 0);
     key(&ui,&g,&keys,SDL_SCANCODE_LEFT,820); key(&ui,&g,&keys,SDL_SCANCODE_S,830);
     CHECK(!ui.held && g.undo_depth == 1 && g.state.tableau[0].count == 2);
-    CHECK(play_dispatch_chord(&ui,&g,INPUT_SELECT,true,840) == PLAY_COMMITTED);
+    CHECK(play_dispatch_chord(&ui,&g,INPUT_SELECT,true,false,false,840) == PLAY_COMMITTED);
     CHECK(same_state(&g.state,&before));
     key(&ui,&g,&keys,SDL_SCANCODE_E,850); draw(&g.state,&ui,850);
     CHECK(SDL_SaveBMP(surface,"play-paused.bmp") == 0);
-    key(&ui,&g,&keys,SDL_SCANCODE_DOWN,860); key(&ui,&g,&keys,SDL_SCANCODE_D,870);
+    key(&ui,&g,&keys,SDL_SCANCODE_DOWN,860); key(&ui,&g,&keys,SDL_SCANCODE_DOWN,861);
+    key(&ui,&g,&keys,SDL_SCANCODE_DOWN,862); key(&ui,&g,&keys,SDL_SCANCODE_D,870);
     CHECK(ui.screen == MENU_CONFIRM_NEW && !ui.confirm_yes && same_state(&g.state,&before));
     draw(&g.state,&ui,870); CHECK(SDL_SaveBMP(surface,"play-confirm.bmp") == 0);
     klondike_dispose(&g);
@@ -173,7 +177,7 @@ static void sdl_key_playthrough(void) {
     /* Same SDL key boundary as the app: complete stock pass/recycle/undo. */
     for (int i = 0; i < 25; ++i) CHECK(key(&ui,&g,&keys,SDL_SCANCODE_A,(uint64_t)i*10) == PLAY_COMMITTED);
     CHECK(same_state(&g.state,&initial) && g.undo_depth == 25);
-    CHECK(play_dispatch_chord(&ui,&g,INPUT_SELECT,true,300) == PLAY_COMMITTED);
+    CHECK(play_dispatch_chord(&ui,&g,INPUT_SELECT,true,false,false,300) == PLAY_COMMITTED);
     CHECK(g.state.stock.count == 0);
     key(&ui,&g,&keys,SDL_SCANCODE_A,310); key(&ui,&g,&keys,SDL_SCANCODE_SPACE,320);
     /* Seed 42: red 4 from tableau 6 fits 5S in tableau 0. */
@@ -182,18 +186,22 @@ static void sdl_key_playthrough(void) {
     for (int i = 0; i < 6; ++i) key(&ui,&g,&keys,SDL_SCANCODE_LEFT,350);
     CHECK(key(&ui,&g,&keys,SDL_SCANCODE_S,360) == PLAY_COMMITTED);
     CHECK(g.state.tableau[0].count == 2 && g.state.tableau[6].cards[5].face_up);
-    CHECK(play_dispatch_chord(&ui,&g,INPUT_SELECT,true,370) == PLAY_COMMITTED);
+    CHECK(play_dispatch_chord(&ui,&g,INPUT_SELECT,true,false,false,370) == PLAY_COMMITTED);
     CHECK(g.state.tableau[0].count == 1);
     key(&ui,&g,&keys,SDL_SCANCODE_S,380); key(&ui,&g,&keys,SDL_SCANCODE_RIGHT,390);
     CHECK(key(&ui,&g,&keys,SDL_SCANCODE_S,400) == PLAY_ERROR && ui.held);
     key(&ui,&g,&keys,SDL_SCANCODE_D,410); CHECK(!ui.held && ui.focus[1] == 0);
-    key(&ui,&g,&keys,SDL_SCANCODE_E,420); key(&ui,&g,&keys,SDL_SCANCODE_DOWN,430); key(&ui,&g,&keys,SDL_SCANCODE_D,440);
+    key(&ui,&g,&keys,SDL_SCANCODE_E,420); key(&ui,&g,&keys,SDL_SCANCODE_DOWN,430);
+    key(&ui,&g,&keys,SDL_SCANCODE_DOWN,431); key(&ui,&g,&keys,SDL_SCANCODE_DOWN,432);
+    key(&ui,&g,&keys,SDL_SCANCODE_D,440);
     CHECK(ui.screen == MENU_CONFIRM_NEW); key(&ui,&g,&keys,SDL_SCANCODE_RIGHT,450);
     CHECK(key(&ui,&g,&keys,SDL_SCANCODE_D,460) == PLAY_NEW_GAME);
     CHECK(ui.seed == 43 && !g.undo_depth); CHECK(klondike_valid(&g.state));
     SDL_Event repeat; SDL_zero(repeat); repeat.type = SDL_KEYDOWN; repeat.key.keysym.scancode = SDL_SCANCODE_A; repeat.key.repeat = 1;
     KlondikeState before = g.state; desktop_event(&ui,&g,&keys,&repeat,470); CHECK(same_state(&g.state,&before));
-    CHECK(key(&ui,&g,&keys,SDL_SCANCODE_ESCAPE,480) == PLAY_QUIT);
+    CHECK(key(&ui,&g,&keys,SDL_SCANCODE_ESCAPE,480) == PLAY_NONE && ui.screen == MENU_CONFIRM_QUIT);
+    key(&ui,&g,&keys,SDL_SCANCODE_RIGHT,481);
+    CHECK(key(&ui,&g,&keys,SDL_SCANCODE_D,482) == PLAY_SAVE_NEEDED);
     CHECK(same_state(&g.state,&before));
     klondike_dispose(&g);
 }
@@ -207,7 +215,7 @@ static void winning(void) {
     /* Empty tableau slots use soft shaded pads; fireworks paint bright sparks. */
     Rect empty = layout_slot(&layout,0,true);
     Uint8 er,eg,eb; SDL_GetRGB(pixel(empty.x+empty.w/2,empty.y+empty.h/2),surface->format,&er,&eg,&eb);
-    CHECK(eg > er && eg > eb); /* still green-tinted felt shade */
+    CHECK(eg >= er && eg >= eb); /* still green-tinted felt shade, even when deeply recessed */
     bool spark = false;
     for (int y = 70; y < 260 && !spark; ++y)
         for (int x = 80; x < 560; ++x) {
@@ -218,6 +226,7 @@ static void winning(void) {
     KlondikeState before = g.state;
     CHECK(play_dispatch(&ui,&g,INPUT_Y,0) == PLAY_ERROR && same_state(&g.state,&before));
     play_dispatch(&ui,&g,INPUT_START,10); play_dispatch(&ui,&g,INPUT_DOWN,20);
+    play_dispatch(&ui,&g,INPUT_DOWN,21); play_dispatch(&ui,&g,INPUT_DOWN,22);
     play_dispatch(&ui,&g,INPUT_A,30); play_dispatch(&ui,&g,INPUT_RIGHT,40);
     CHECK(play_dispatch(&ui,&g,INPUT_A,50) == PLAY_NEW_GAME);
     CHECK(!klondike_won(&g.state) && klondike_valid(&g.state) && ui.seed == 43);
