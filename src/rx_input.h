@@ -15,12 +15,13 @@ static inline SDL_Joystick *rx_open_controller(void) {
 
 /*
  * Physical ANBERNIC-keys mapping verified in go-rx (2026-11-19):
- * buttons 0..10 = A B Y X L1 R1 SELECT START M L2 R2
+ * buttons 0..10 = A B Y X R1 L1 SELECT START M L2 R2
+ * (physical shoulders swapped vs go-rx default per playtest)
  * hat 0 = D-pad.
  */
 static inline InputAction rx_button_action(Uint8 button) {
     static const InputAction buttons[] = {
-        INPUT_A, INPUT_B, INPUT_Y, INPUT_X, INPUT_L1, INPUT_R1,
+        INPUT_A, INPUT_B, INPUT_Y, INPUT_X, INPUT_R1, INPUT_L1,
         INPUT_SELECT, INPUT_START, INPUT_QUIT, INPUT_L2, INPUT_R2
     };
     return button < (Uint8)(sizeof buttons / sizeof buttons[0]) ? buttons[button] : INPUT_NONE;

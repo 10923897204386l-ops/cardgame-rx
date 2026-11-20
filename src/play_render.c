@@ -128,8 +128,8 @@ static void menu_item_at(SDL_Renderer *r, Rect panel, int y, const char *label, 
         render_round_outline(r,row,7,2,(SDL_Color){43,35,24,255});
     }
     color(r,(SDL_Color){43,35,24,255});
-    if (!render_menu_text(r,panel.x + panel.w / 2,y - 3,label,panel.w - 24,0.92f))
-        render_text(r,panel.x + 18,y,label,2);
+    if (!render_menu_text(r,panel.x + panel.w / 2,y - 3,label,panel.w - 24,0.64f))
+        render_text(r,panel.x + 18,y,label,1);
 }
 static void hud_text(SDL_Renderer *r, int center, int y, const char *label, int width, float zoom) {
     color(r,(SDL_Color){43,35,24,255});
@@ -212,7 +212,7 @@ static void menu_overlay(SDL_Renderer *r, const PlayUI *ui) {
         Rect panel = {150, 112, 340, 250};
         menu_panel(r, panel);
         color(r,(SDL_Color){43,35,24,255});
-        menu_text(r,320,128,"PAUSED",280,1.05f);
+        menu_text(r,320,128,"PAUSED",280,0.74f);
         const char *pause_items[] = {"RESUME","NEW GAME","OPTIONS","MAIN MENU"};
         int y0 = 168;
         for (unsigned i = 0; i < 4; ++i)
@@ -296,18 +296,18 @@ void play_render_fx(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
     if (ref.zone == K_TABLEAU) snprintf(label,sizeof(label),"TAB %u",ref.index+1);
     else if (ref.zone == K_FOUNDATION) snprintf(label,sizeof(label),"ACE %u",ref.index+1);
     else snprintf(label,sizeof(label),"%s",ref.zone == K_STOCK ? "STOCK" : "WASTE");
-    /* Large single-line HUD: bake is 40px, zoom near 1.0 for handheld. */
-    hud_text(r,78,6,label,130,1.05f);
+    /* Top status text ~30% smaller than prior large bake zoom. */
+    hud_text(r,78,8,label,130,0.74f);
     snprintf(label,sizeof(label),"SEED %u   STK %zu",ui->seed,s->stock.count);
-    hud_text(r,250,6,label,220,0.95f);
+    hud_text(r,250,8,label,220,0.66f);
     if (ui->held) {
         size_t n = play_held_count(ui,s);
         snprintf(label,sizeof(label),"HOLD %zu",n);
-        hud_text(r,420,6,label,120,1.0f);
+        hud_text(r,420,8,label,120,0.70f);
     }
     const char *msg = play_message(ui,now);
-    if (msg && msg[0]) hud_text(r,540,6,msg,160,0.95f);
-    if (klondike_won(s)) hud_text(r,320,l->status_h/2 - 4,"YOU WIN",200,1.1f);
+    if (msg && msg[0]) hud_text(r,540,8,msg,160,0.66f);
+    if (klondike_won(s)) hud_text(r,320,l->status_h/2 - 2,"YOU WIN",200,0.77f);
     if (ui->screen != MENU_PLAYING) menu_overlay(r,ui);
     if (fx) {
         fx_set_victory(fx, klondike_won(s) && ui->screen == MENU_PLAYING, now);
