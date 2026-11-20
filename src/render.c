@@ -4,17 +4,19 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "third_party/stb_truetype.h"
 /* Original 5x7 bitmap lettering and geometric art; no external assets. */
-enum { FONT_ATLAS_SIZE = 256, FONT_FIRST_GLYPH = 32, FONT_GLYPH_COUNT = 95 };
+enum { FONT_ATLAS_SIZE = 512, FONT_FIRST_GLYPH = 32, FONT_GLYPH_COUNT = 95, FONT_BAKE_PX = 40 };
 static struct {
     SDL_Renderer *renderer;
     SDL_Texture *faces[4][14], *backs[2], *felt, *title;
     SDL_Texture *font_atlas;
     stbtt_bakedchar glyphs[FONT_GLYPH_COUNT];
 } assets;
-static SDL_Texture *load_texture(SDL_Renderer *r, const char *path) {
+static SDL_Texture *load_texture(SDL_Renderer *r, const char *path, bool color_key_black) {
     SDL_Surface *s = SDL_LoadBMP(path);
-    SDL_Texture *t = s ? SDL_CreateTextureFromSurface(r,s) : NULL;
-    if (s) SDL_FreeSurface(s);
+    if (!s) return NULL;
+    if (color_key_black) SDL_SetColorKey(s, SDL_TRUE, SDL_MapRGB(s->format, 0, 0, 0));
+    SDL_Texture *t = SDL_CreateTextureFromSurface(r, s);
+    SDL_FreeSurface(s);
     return t;
 }
 static void path_join(char *out, size_t size, const char *dir, const char *rel) {
@@ -33,15 +35,15 @@ bool render_assets_open(SDL_Renderer *renderer, const char *asset_dir) {
     assets.renderer = renderer;
     char path[512], rel[128];
     path_join(path,sizeof(path),asset_dir,"felt_640x480.bmp");
-    assets.felt = load_texture(renderer,path);
+    assets.felt = load_texture(renderer,path,false);
     path_join(path,sizeof(path),asset_dir,"croupier-rx-title-640x480.bmp");
-    assets.title = load_texture(renderer,path);
+    assets.title = load_texture(renderer,path,false);
     const char *backs[] = {"backs/back_navy_72x100.bmp","backs/back_wine_72x100.bmp"};
-    for (int i=0;i<2;++i) { path_join(path,sizeof(path),asset_dir,backs[i]); assets.backs[i]=load_texture(renderer,path); }
+    for (int i=0;i<2;++i) { path_join(path,sizeof(path),asset_dir,backs[i]); assets.backs[i]=load_texture(renderer,path,true); }
     for (Suit suit=CLUBS;suit<=SPADES;++suit) for (unsigned rank=1;rank<=13;++rank) {
         snprintf(rel,sizeof(rel),"faces_72x100/%c%c.bmp",rank_code(rank),suit_code(suit));
         path_join(path,sizeof(path),asset_dir,rel);
-        assets.faces[suit][rank]=load_texture(renderer,path);
+        assets.faces[suit][rank]=load_texture(renderer,path,true);
     }
     return assets.felt && assets.title && assets.backs[0] && assets.backs[1] &&
         assets.faces[CLUBS][1] && assets.faces[SPADES][13];
@@ -64,7 +66,7 @@ bool render_menu_font_open(SDL_Renderer *renderer, const char *filename) {
     unsigned char *ttf = SDL_LoadFile(filename,&length);
     unsigned char *bitmap = SDL_malloc(FONT_ATLAS_SIZE * FONT_ATLAS_SIZE);
     if (!renderer || !ttf || !bitmap || !length ||
-        stbtt_BakeFontBitmap(ttf,0,24,bitmap,FONT_ATLAS_SIZE,FONT_ATLAS_SIZE,
+        stbtt_BakeFontBitmap(ttf,0,FONT_BAKE_PX,bitmap,FONT_ATLAS_SIZE,FONT_ATLAS_SIZE,
                              FONT_FIRST_GLYPH,FONT_GLYPH_COUNT,assets.glyphs) <= 0) {
         SDL_free(ttf); SDL_free(bitmap); return false;
     }
@@ -103,7 +105,7 @@ bool render_menu_text(SDL_Renderer *renderer,int center_x,int y,const char *text
         const stbtt_bakedchar *g = font_glyph((unsigned char)*text);
         SDL_Rect src = {g->x0,g->y0,g->x1-g->x0,g->y1-g->y0};
         SDL_Rect dst = {(int)(pen + g->xoff * scale + 0.5f),
-                        y + (int)(17 * zoom) + (int)(g->yoff * scale),
+                        y + (int)(28 * zoom) + (int)(g->yoff * scale),
                         (int)(src.w * scale + 0.5f),(int)(src.h * scale + 0.5f)};
         if (dst.w && dst.h) SDL_RenderCopy(renderer,assets.font_atlas,&src,&dst);
         pen += g->xadvance * scale;

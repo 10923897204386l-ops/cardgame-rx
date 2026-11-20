@@ -296,16 +296,18 @@ void play_render_fx(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
     if (ref.zone == K_TABLEAU) snprintf(label,sizeof(label),"TAB %u",ref.index+1);
     else if (ref.zone == K_FOUNDATION) snprintf(label,sizeof(label),"ACE %u",ref.index+1);
     else snprintf(label,sizeof(label),"%s",ref.zone == K_STOCK ? "STOCK" : "WASTE");
-    hud_text(r,70,4,label,120,0.72f);
-    snprintf(label,sizeof(label),"SEED %u  STK %zu",ui->seed,s->stock.count);
-    hud_text(r,230,4,label,200,0.62f);
+    /* Large single-line HUD: bake is 40px, zoom near 1.0 for handheld. */
+    hud_text(r,78,6,label,130,1.05f);
+    snprintf(label,sizeof(label),"SEED %u   STK %zu",ui->seed,s->stock.count);
+    hud_text(r,250,6,label,220,0.95f);
     if (ui->held) {
         size_t n = play_held_count(ui,s);
         snprintf(label,sizeof(label),"HOLD %zu",n);
-        hud_text(r,380,4,label,110,0.66f);
+        hud_text(r,420,6,label,120,1.0f);
     }
-    hud_text(r,500,4,play_message(ui,now),180,0.62f);
-    if (klondike_won(s)) hud_text(r,320,l->status_h > 30 ? 18 : 16,"YOU WIN",160,0.7f);
+    const char *msg = play_message(ui,now);
+    if (msg && msg[0]) hud_text(r,540,6,msg,160,0.95f);
+    if (klondike_won(s)) hud_text(r,320,l->status_h/2 - 4,"YOU WIN",200,1.1f);
     if (ui->screen != MENU_PLAYING) menu_overlay(r,ui);
     if (fx) {
         fx_set_victory(fx, klondike_won(s) && ui->screen == MENU_PLAYING, now);
