@@ -13,7 +13,7 @@ gcc -std=c17 -O2 -Wall -Wextra -Werror \
     -DCARDGAME_ASSET_DIR=\"${asset_dir}\" \
     -DCARDGAME_FONT_PATH=\"${font_path}\" \
     $cflags -Isrc \
-    src/model.c src/layout.c src/scene.c src/klondike.c \
+    src/model.c src/layout.c src/scene.c src/klondike.c src/save.c \
     src/play.c src/play_view.c src/play_render.c \
     src/keyboard.c src/desktop.c src/render.c src/fx.c src/audio.c \
     src/game.c \
