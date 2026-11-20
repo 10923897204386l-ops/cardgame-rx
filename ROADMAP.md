@@ -1,7 +1,7 @@
 # Cardgame-RX roadmap
 
 M0.1A, M0.1B and M0.1C are merged (#1/#2/#3), with corrective PR #4 on main.
-M0.1D Croupier-RX visuals and menus are implemented on a feature branch awaiting
+M0.1D Croupier-RX visuals, menus and controls HUD are implemented on a feature branch awaiting
 review. No milestone is device-verified.
 
 - **M0 — Foundation (in progress; M0.1A/B/C merged, M0.1D visuals under review):** inspect shared devkit, specify engine contracts, controls and platform boundaries.

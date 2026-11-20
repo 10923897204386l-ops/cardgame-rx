@@ -3,7 +3,7 @@
 Croupier-RX is a reusable card-game engine for RG35XXSP-class 640×480 devices,
 currently shipping playable desktop Klondike. M0.1D adds the Croupier-RX identity,
 locked Hawaiian casino title art, Go-RX-style menus, Kennard card faces, custom
-backs and a textured green felt table. C17, SDL2 and CMake follow the shared
+backs and a lighter textured green felt table with sparse peripheral petals. C17, SDL2 and CMake follow the shared
 RG35XX Devkit stack. No RG35XXSP build or hardware controls have been verified.
 
 ## Build, test and play
@@ -47,7 +47,8 @@ wine back. Custom image import is deferred.
 | L1/R1 | Left Shift/Space | Optional area shortcuts: Draw → Tableau → Foundations; L1 reverses |
 | L2/R2 | Left Ctrl/Left Alt | First/last pile, including during carry |
 | Start | E | Pause / resume |
-| Select | Q | Cancel carry first; otherwise undo one committed action |
+| Select | Q | Show/hide optional controls bar, hidden by default |
+| L2+Select | Left Ctrl+Q | Undo one committed action when not holding cards |
 | Quit | Escape | Exit the desktop app |
 
 The area remembers its last pile (initially stock, tableau 0, foundation 0).
@@ -65,6 +66,11 @@ New Game and Main Menu require confirmation, with **No selected initially**;
 arrows toggle No/Yes and A accepts. B or Start backs out of confirmation; at the
 main pause menu B/Start resumes. Gameplay actions are gated while paused. Pause
 preserves a pending carry.
+During gameplay, Select toggles an optional bottom controls bar. The bar uses the
+same comic-style font and warm cream/yellow treatment as the status HUD, lists
+the active mappings, and is drawn underneath cards so it does not obscure the
+tableau or held stacks. L2+Select performs Undo; while holding cards it reports
+the holding guard instead of mutating rules state.
 Window close or Escape exits. These physical-key defaults match the shared
 devkit desktop input mapping. Its M key (X) and Ctrl+R debug reload have no
 gameplay binding here; New Game still requires confirmation. T/B preview debug
@@ -144,8 +150,8 @@ of window scale, and `--smoke` to present one window frame then exit:
 Prefix capture commands with `SDL_VIDEODRIVER=dummy` when no display is present.
 PNG evidence is in `docs/screenshots/`; M0.1C views are in `m01c/` and M0.1D
 views are in `m01d/`.
-The desktop test writes invalid, pause, confirmation, tall, held and win BMP
-fixtures in its build/test working directory. BMP capture adds no image library;
+The desktop test writes invalid, pause, confirmation, controls-bar hidden/shown,
+tall, held and win BMP fixtures in its build/test working directory. BMP capture adds no image library;
 the committed PNGs are lossless conversions for review.
 
 ## Module and rules boundaries

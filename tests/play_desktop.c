@@ -63,6 +63,13 @@ static void carry_and_flash(void) {
     Rect b = play_held_bounds(&layout,&g.state,&ui); CHECK(b.h == 172); /* entire four-card candidate */
     KlondikeState before = g.state;
     draw(&g.state,&ui,120);
+    CHECK(!ui.controls_visible);
+    CHECK(SDL_SaveBMP(surface,"play-controls-hidden.bmp") == 0);
+    CHECK(play_dispatch(&ui,&g,INPUT_SELECT,121) == PLAY_NONE && ui.controls_visible);
+    draw(&g.state,&ui,121);
+    CHECK(SDL_SaveBMP(surface,"play-controls-shown.bmp") == 0);
+    CHECK(play_dispatch(&ui,&g,INPUT_SELECT,122) == PLAY_NONE && !ui.controls_visible);
+    draw(&g.state,&ui,122);
     CHECK(pixel(b.x+10,b.y+10) != 0); /* held asset-backed card is rendered */
     Rect source_under = play_card_rect(&layout,&g.state.tableau[0],0,0);
     CHECK(!rgb(24,180,255,249,226)); /* held source card is not still drawn in place */
@@ -79,7 +86,8 @@ static void carry_and_flash(void) {
     CHECK(SDL_SaveBMP(surface,"play-invalid.bmp") == 0);
     key(&ui,&g,&keys,SDL_SCANCODE_LEFT,820); key(&ui,&g,&keys,SDL_SCANCODE_S,830);
     CHECK(!ui.held && g.undo_depth == 1 && g.state.tableau[0].count == 2);
-    key(&ui,&g,&keys,SDL_SCANCODE_Q,840); CHECK(same_state(&g.state,&before));
+    CHECK(play_dispatch_chord(&ui,&g,INPUT_SELECT,true,840) == PLAY_COMMITTED);
+    CHECK(same_state(&g.state,&before));
     key(&ui,&g,&keys,SDL_SCANCODE_E,850); draw(&g.state,&ui,850);
     CHECK(SDL_SaveBMP(surface,"play-paused.bmp") == 0);
     key(&ui,&g,&keys,SDL_SCANCODE_DOWN,860); key(&ui,&g,&keys,SDL_SCANCODE_D,870);
@@ -128,7 +136,8 @@ static void sdl_key_playthrough(void) {
     /* Same SDL key boundary as the app: complete stock pass/recycle/undo. */
     for (int i = 0; i < 25; ++i) CHECK(key(&ui,&g,&keys,SDL_SCANCODE_A,(uint64_t)i*10) == PLAY_COMMITTED);
     CHECK(same_state(&g.state,&initial) && g.undo_depth == 25);
-    key(&ui,&g,&keys,SDL_SCANCODE_Q,300); CHECK(g.state.stock.count == 0);
+    CHECK(play_dispatch_chord(&ui,&g,INPUT_SELECT,true,300) == PLAY_COMMITTED);
+    CHECK(g.state.stock.count == 0);
     key(&ui,&g,&keys,SDL_SCANCODE_A,310); key(&ui,&g,&keys,SDL_SCANCODE_SPACE,320);
     /* Seed 42: red 4 from tableau 6 fits 5S in tableau 0. */
     for (int i = 0; i < 6; ++i) key(&ui,&g,&keys,SDL_SCANCODE_RIGHT,330);
@@ -136,7 +145,8 @@ static void sdl_key_playthrough(void) {
     for (int i = 0; i < 6; ++i) key(&ui,&g,&keys,SDL_SCANCODE_LEFT,350);
     CHECK(key(&ui,&g,&keys,SDL_SCANCODE_S,360) == PLAY_COMMITTED);
     CHECK(g.state.tableau[0].count == 2 && g.state.tableau[6].cards[5].face_up);
-    key(&ui,&g,&keys,SDL_SCANCODE_Q,370); CHECK(g.state.tableau[0].count == 1);
+    CHECK(play_dispatch_chord(&ui,&g,INPUT_SELECT,true,370) == PLAY_COMMITTED);
+    CHECK(g.state.tableau[0].count == 1);
     key(&ui,&g,&keys,SDL_SCANCODE_S,380); key(&ui,&g,&keys,SDL_SCANCODE_RIGHT,390);
     CHECK(key(&ui,&g,&keys,SDL_SCANCODE_S,400) == PLAY_ERROR && ui.held);
     key(&ui,&g,&keys,SDL_SCANCODE_D,410); CHECK(!ui.held && ui.focus[1] == 0);

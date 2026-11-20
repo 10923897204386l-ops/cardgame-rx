@@ -18,6 +18,7 @@ typedef struct {
     unsigned focus[AREA_COUNT];
     size_t selected;
     bool held;
+    bool controls_visible;
     KlondikePile source;
     size_t source_start;
     PlayScreen screen, return_screen;
@@ -38,4 +39,5 @@ const char *play_message(const PlayUI *ui, uint64_t now);
 /* Time is injected (SDL_GetTicks64 at the boundary), so effects never sleep.
    PLAY_ERROR reserves a semantic event for future sound; no playback here. */
 PlayEvent play_dispatch(PlayUI *ui, KlondikeGame *game, InputAction action, uint64_t now);
+PlayEvent play_dispatch_chord(PlayUI *ui, KlondikeGame *game, InputAction action, bool l2_held, uint64_t now);
 #endif

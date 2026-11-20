@@ -180,9 +180,22 @@ static PlayEvent pause_action(PlayUI *ui, KlondikeGame *g, InputAction action) {
     return menu_action(ui,g,action);
 }
 PlayEvent play_dispatch(PlayUI *ui, KlondikeGame *g, InputAction action, uint64_t now) {
+    return play_dispatch_chord(ui,g,action,false,now);
+}
+PlayEvent play_dispatch_chord(PlayUI *ui, KlondikeGame *g, InputAction action, bool l2_held, uint64_t now) {
     if (ui->quit || action >= INPUT_COUNT) return PLAY_NONE;
     if (action == INPUT_QUIT) { ui->quit = true; return PLAY_QUIT; }
     if (ui->screen != MENU_PLAYING) return pause_action(ui, g, action);
+    if (action == INPUT_SELECT && l2_held) {
+        if (ui->held) return feedback(ui, MSG_HOLDING, PLAY_ERROR, now);
+        if (!klondike_undo(g)) return feedback(ui, MSG_NO_UNDO, PLAY_ERROR, now);
+        select_default(ui, &g->state);
+        return feedback(ui, MSG_UNDONE, PLAY_COMMITTED, now);
+    }
+    if (action == INPUT_SELECT) {
+        ui->controls_visible = !ui->controls_visible;
+        return PLAY_NONE;
+    }
     if (action == INPUT_START) { ui->paused = true; ui->screen = MENU_PAUSE; ui->menu = 0; return PLAY_NONE; }
     if (action == INPUT_L1 || action == INPUT_R1) {
         ui->area = (PlayArea)((ui->area + (action == INPUT_R1 ? 1 : 2)) % AREA_COUNT);
@@ -207,7 +220,7 @@ PlayEvent play_dispatch(PlayUI *ui, KlondikeGame *g, InputAction action, uint64_
         spatial_vertical(ui, &g->state, action);
         return PLAY_NONE;
     }
-    if (action == INPUT_A || (action == INPUT_SELECT && ui->held)) {
+    if (action == INPUT_A) {
         if (ui->held) {
             cancel(ui, &g->state);
             return feedback(ui, MSG_CANCELLED, PLAY_CANCELLED, now);
@@ -241,11 +254,6 @@ PlayEvent play_dispatch(PlayUI *ui, KlondikeGame *g, InputAction action, uint64_
     }
     if ((action == INPUT_X || action == INPUT_Y) && ui->held)
         return feedback(ui, MSG_HOLDING, PLAY_ERROR, now);
-    if (action == INPUT_SELECT) {
-        if (!klondike_undo(g)) return feedback(ui, MSG_NO_UNDO, PLAY_ERROR, now);
-        select_default(ui, &g->state);
-        return feedback(ui, MSG_UNDONE, PLAY_COMMITTED, now);
-    }
     if (action == INPUT_Y) {
         bool draw = g->state.stock.count != 0;
         bool changed = draw ? klondike_draw(g) : klondike_recycle(g);

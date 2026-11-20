@@ -36,6 +36,24 @@ static void menu_item(SDL_Renderer *r, int y, const char *label, bool selected) 
     color(r,(SDL_Color){43,35,24,255});
     if (!render_menu_text(r,320,y-4,label,260,1.0f)) render_text(r,200,y,label,2);
 }
+static void hud_text(SDL_Renderer *r, int center, int y, const char *label, int width, float zoom) {
+    color(r,(SDL_Color){43,35,24,255});
+    if (!render_menu_text(r,center,y,label,width,zoom)) render_text(r,center-width/2,y+1,label,1);
+}
+static void status_bar(SDL_Renderer *r, Rect b) {
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
+    render_round_fill(r,b,6,(SDL_Color){246,229,160,238});
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
+    render_round_outline(r,b,6,2,(SDL_Color){43,35,24,255});
+}
+static void controls_bar(SDL_Renderer *r) {
+    status_bar(r,(Rect){6,450,628,26});
+    hud_text(r,92,457,"DPAD MOVE",140,0.36f);
+    hud_text(r,206,457,"B PICK/PLACE",150,0.36f);
+    hud_text(r,333,457,"A CANCEL/WASTE",170,0.36f);
+    hud_text(r,472,457,"Y DRAW  X ACE",180,0.36f);
+    hud_text(r,583,457,"L2+SELECT UNDO",130,0.32f);
+}
 static void menu_overlay(SDL_Renderer *r, const PlayUI *ui) {
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
     color(r,(SDL_Color){0,0,0,ui->screen == MENU_MAIN ? 40 : 165}); fill(r,(Rect){0,0,640,480});
@@ -73,6 +91,7 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
         return;
     }
     render_table_background(r);
+    if (ui->controls_visible) controls_bar(r);
     top_pile_visible(r,&s->stock,layout_slot(l,0,false),ui,(KlondikePile){K_STOCK,0},theme);
     top_pile_visible(r,&s->waste,layout_slot(l,1,false),ui,(KlondikePile){K_WASTE,0},theme);
     for (unsigned f = 0; f < 4; ++f)
@@ -115,23 +134,23 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
         SDL_Color held_color = play_invalid_outline(ui,now) ? (SDL_Color){255,42,54,255} : (SDL_Color){119,218,255,255};
         render_round_outline(r,bounds,10,4,held_color);
     }
-    /* Fixed status strip, always on top of table/carry; no bottom bar. */
-    color(r,(SDL_Color){16,34,32,255}); fill(r,(Rect){0,0,640,l->status_h});
-    color(r,(SDL_Color){255,249,226,255}); char label[96];
+    /* Fixed status strip, always on top of table/carry. */
+    status_bar(r,(Rect){6,2,628,l->status_h-4});
+    char label[96];
     KlondikePile ref = play_focus(ui);
     if (ref.zone == K_TABLEAU) snprintf(label,sizeof(label),"TABLEAU %u",ref.index+1);
     else if (ref.zone == K_FOUNDATION) snprintf(label,sizeof(label),"FOUNDATION %u",ref.index+1);
     else snprintf(label,sizeof(label),"DRAW %s",ref.zone == K_STOCK ? "STOCK" : "WASTE");
-    render_text(r,10,5,label,1);
+    hud_text(r,65,6,label,110,0.42f);
     snprintf(label,sizeof(label),"SEED %u  STOCK %zu",ui->seed,s->stock.count);
-    render_text(r,10,17,label,1);
+    hud_text(r,87,17,label,150,0.38f);
     if (ui->held) {
         size_t n = play_held_count(ui,s);
         snprintf(label,sizeof(label),"HOLD %zu  PLACE %zu",n,legal ? klondike_pile(s,ui->source)->count-chosen : 0);
-        render_text(r,160,5,label,1);
+        hud_text(r,230,6,label,150,0.38f);
     }
-    render_text(r,350,5,play_message(ui,now),1);
-    render_text(r,500,17,"START PAUSE",1);
-    if (klondike_won(s)) render_text(r,230,17,"YOU WIN - START NEW GAME",1);
+    hud_text(r,405,6,play_message(ui,now),160,0.42f);
+    hud_text(r,552,17,"START PAUSE",120,0.36f);
+    if (klondike_won(s)) hud_text(r,330,17,"YOU WIN - START NEW GAME",220,0.36f);
     if (ui->screen != MENU_PLAYING) menu_overlay(r,ui);
 }
