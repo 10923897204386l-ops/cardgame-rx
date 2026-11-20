@@ -5,6 +5,7 @@
 
 typedef enum { AREA_DRAW, AREA_TABLEAU, AREA_FOUNDATIONS, AREA_COUNT } PlayArea;
 typedef enum { PLAY_NONE, PLAY_ERROR, PLAY_COMMITTED, PLAY_CANCELLED, PLAY_NEW_GAME, PLAY_QUIT } PlayEvent;
+typedef enum { MENU_MAIN, MENU_PLAYING, MENU_PAUSE, MENU_CONFIRM_NEW, MENU_CONFIRM_MAIN, MENU_OPTIONS } PlayScreen;
 typedef enum {
     MSG_READY, MSG_PICKED, MSG_CANCELLED, MSG_INVALID_DROP, MSG_EMPTY,
     MSG_HOLDING, MSG_NO_MOVE, MSG_MOVED, MSG_DRAW, MSG_RECYCLE,
@@ -17,8 +18,10 @@ typedef struct {
     unsigned focus[AREA_COUNT];
     size_t selected;
     bool held;
+    bool controls_visible;
     KlondikePile source;
     size_t source_start;
+    PlayScreen screen, return_screen;
     bool paused, confirming, confirm_yes, quit;
     unsigned menu;
     uint32_t seed;
@@ -36,4 +39,5 @@ const char *play_message(const PlayUI *ui, uint64_t now);
 /* Time is injected (SDL_GetTicks64 at the boundary), so effects never sleep.
    PLAY_ERROR reserves a semantic event for future sound; no playback here. */
 PlayEvent play_dispatch(PlayUI *ui, KlondikeGame *game, InputAction action, uint64_t now);
+PlayEvent play_dispatch_chord(PlayUI *ui, KlondikeGame *game, InputAction action, bool l2_held, uint64_t now);
 #endif

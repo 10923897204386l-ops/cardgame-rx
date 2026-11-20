@@ -21,9 +21,11 @@ Updated: 2026-11-20.
   Evidence: `docs/screenshots/m01c/`.
 - M0.1A normal/stress captures remain 640×480 and pixel-identical to baseline.
 - Configurable bounded undo and GNU/Linux failed-allocation tests pass.
-- User keyboard correction applied: shared devkit physical-key defaults and
-  A-confirm/B-back pause menus. Manual feedback corrections are in progress on
-  `fix/m0-1c-manual-feedback`.
+- M0.1D is implemented on `feat/m0-1d-croupier-visuals`: locked title art,
+  Kennard card/felt assets, lighter green felt with sparse peripheral petals,
+  Go-RX-style font/menu panels, main menu, expanded pause menu and Select-toggled
+  controls bar with L2+Select undo. Acceptance screenshots are in
+  `docs/screenshots/m01d/`.
 - No RG35XXSP hardware testing, device mapping or packaging has been performed.
 
 ## Goal
@@ -31,17 +33,14 @@ Reusable card-game engine for RG35XXSP; Klondike first, 500 later. Keep rules,
 input, transient interaction and rendering separate.
 
 ## Current milestone
-M0.1C playable desktop slice is merged. Post-merge corrective work is in progress
-for manual keyboard/visual feedback before starting M0.1D. See
-`tasks/M0.1C-REPORT.md` for commands and limits.
+M0.1D Croupier-RX visuals, menus and controls HUD are implemented locally on
+`feat/m0-1d-croupier-visuals`, awaiting final review and PR. See
+`tasks/M0.1D-REPORT.md` for commands and limits.
 
 ## Known limits
-- Original M0.1C accepted area-cycle navigation; manual review now requires
-  spatial arrows as the primary navigation model.
-- Tall-column layout is a minimal readable prototype, not final visual polish.
-- Court art remains temporary; saves, audio and physical device support are absent.
+- Tall-column layout is a readable prototype, not final device-polished scrolling.
+- Saves, audio and physical device support are absent.
 
 ## One next action
-Finish the manual-feedback corrective branch, rerun tests and relaunch for user
-verification. Do not begin M0.1D or device packaging until this correction is
-accepted.
+Review M0.1D at native 640×480, then open a squash-merge PR if accepted. Do not
+begin device packaging or another milestone without approval.

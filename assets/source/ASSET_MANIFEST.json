@@ -1,0 +1,9 @@
+{
+  "title_640x480_sha256": "864d258b4d6f794932b923343f7c447ecd20638272d3d0022a4d7a4a1fbf8750",
+  "complete_zip_sha256": "12ca8dd4bf6967ebc8a21c4f4ecd4fb792415019d4ab2012f681e48c127c92ed",
+  "drive_files": {
+    "croupier-rx-title-640x480.png": "1_AKG-V0qKx7oJulRT7Cs_-QHt3qBkI4-",
+    "cardgame-rx-assets-complete.zip": "1UOKcQPsKy47AmZHzuHt4fGwUfRnRak9G"
+  },
+  "runtime_format": "BMP files generated losslessly from pinned PNG assets for SDL_LoadBMP runtime loading"
+}
