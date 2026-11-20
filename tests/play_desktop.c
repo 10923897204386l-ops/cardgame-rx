@@ -74,6 +74,16 @@ static void carry_and_flash(void) {
     KeyboardMap keys = keyboard_default();
     draw(&g.state,&ui,0); CHECK(SDL_SaveBMP(surface,"play-main-menu.bmp") == 0);
     start_play(&ui,&g,&keys);
+    draw(&g.state,&ui,50);
+    /* Empty foundation/waste pads are softly shaded rather than bare outlines. */
+    {
+        Rect ace = layout_slot(&layout,3,false);
+        Uint8 r0,g0,b0,r1,g1,b1;
+        SDL_GetRGB(pixel(ace.x+ace.w/2,ace.y+ace.h/2),surface->format,&r0,&g0,&b0);
+        SDL_GetRGB(pixel(2,200),surface->format,&r1,&g1,&b1);
+        CHECK(!(r0 == r1 && g0 == g1 && b0 == b1));
+        CHECK(g0 + 8 < g1 || r0 + 8 < r1); /* recessed shade is darker than open felt edge */
+    }
     key(&ui,&g,&keys,SDL_SCANCODE_SPACE,100); key(&ui,&g,&keys,SDL_SCANCODE_S,110);
     CHECK(ui.held && play_held_count(&ui,&g.state) == 4);
     key(&ui,&g,&keys,SDL_SCANCODE_RIGHT,120); /* 9C wants only [8H,7C,6D] */
@@ -193,6 +203,17 @@ static void winning(void) {
     CHECK(klondike_won(&g.state)); PlayUI ui; play_init(&ui,&g.state,42);
     ui.screen = MENU_PLAYING; ui.paused = false;
     draw(&g.state,&ui,0); CHECK(SDL_SaveBMP(surface,"play-win.bmp") == 0);
+    /* Empty tableau slots use soft shaded pads; fireworks paint bright sparks. */
+    Rect empty = layout_slot(&layout,0,true);
+    Uint8 er,eg,eb; SDL_GetRGB(pixel(empty.x+empty.w/2,empty.y+empty.h/2),surface->format,&er,&eg,&eb);
+    CHECK(eg > er && eg > eb); /* still green-tinted felt shade */
+    bool spark = false;
+    for (int y = 70; y < 260 && !spark; ++y)
+        for (int x = 80; x < 560; ++x) {
+            Uint8 r,g,b; SDL_GetRGB(pixel(x,y),surface->format,&r,&g,&b);
+            if (r > 200 && g > 150 && b < 160) { spark = true; break; }
+        }
+    CHECK(spark);
     KlondikeState before = g.state;
     CHECK(play_dispatch(&ui,&g,INPUT_Y,0) == PLAY_ERROR && same_state(&g.state,&before));
     play_dispatch(&ui,&g,INPUT_START,10); play_dispatch(&ui,&g,INPUT_DOWN,20);

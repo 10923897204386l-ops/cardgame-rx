@@ -10,8 +10,92 @@ static void shadow(SDL_Renderer *r, Rect b, int alpha) {
     render_round_fill(r,(Rect){b.x+1,b.y+2,b.w,b.h},8,(SDL_Color){0,0,0,alpha/2});
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
 }
+/* Soft recessed empty-slot treatment: layered translucent shade (cheap blur stand-in). */
+static void empty_slot(SDL_Renderer *r, Rect b, const char *label) {
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
+    render_round_fill(r,b,10,(SDL_Color){0,18,8,58});
+    render_round_fill(r,(Rect){b.x+2,b.y+2,b.w-4,b.h-4},9,(SDL_Color){0,12,6,72});
+    render_round_fill(r,(Rect){b.x+5,b.y+5,b.w-10,b.h-10},8,(SDL_Color){4,28,14,48});
+    render_round_fill(r,(Rect){b.x+8,b.y+8,b.w-16,b.h-16},7,(SDL_Color){12,42,24,36});
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
+    render_round_outline(r,b,10,1,(SDL_Color){86,132,108,255});
+    render_round_outline(r,(Rect){b.x+1,b.y+1,b.w-2,b.h-2},9,1,(SDL_Color){150,190,160,255});
+    color(r,(SDL_Color){214,232,214,255});
+    if (label) render_text(r,b.x+8,b.y+44,label,1);
+}
 static void outline(SDL_Renderer *r, Rect b, int expand, SDL_Color c) {
     render_round_outline(r,(Rect){b.x-expand,b.y-expand,b.w+2*expand,b.h+2*expand},8,1,c);
+}
+static unsigned fw_hash(unsigned x) {
+    x ^= x << 13; x ^= x >> 17; x ^= x << 5; return x ? x : 0xA5A5u;
+}
+static void firework_burst(SDL_Renderer *r, int cx, int cy, unsigned seed, int age, int life) {
+    if (age < 0 || age >= life) return;
+    static const SDL_Color palette[] = {
+        {255,214,92,255},{255,92,110,255},{110,214,255,255},
+        {170,255,120,255},{255,160,70,255},{220,140,255,255},{255,255,240,255}
+    };
+    int sparks = 18 + (int)(seed % 7u);
+    for (int i = 0; i < sparks; ++i) {
+        unsigned h = fw_hash(seed + (unsigned)i * 97u);
+        int angle = (int)(h % 628u); /* ~0..2pi * 100 */
+        int speed = 18 + (int)((h >> 8) % 34u);
+        /* Approximate cos/sin with cheap quadrant folds for deterministic layout. */
+        int qx = (angle % 314) - 157; /* -157..156 */
+        int qy = 157 - ((angle + 78) % 314);
+        if (angle >= 314) { qx = -qx; qy = -qy; }
+        int x = cx + (qx * speed * age) / (157 * life);
+        int y = cy + (qy * speed * age) / (157 * life) + (age * age) / (life * 3);
+        SDL_Color c = palette[(seed + (unsigned)i) % (unsigned)(sizeof palette / sizeof palette[0])];
+        int fade = 255 - (age * 200) / life;
+        if (fade < 40) fade = 40;
+        c.a = (Uint8)fade;
+        int size = 2 + ((int)(h >> 16) & 1);
+        if (age * 3 > life * 2) size = 1;
+        SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
+        render_round_fill(r,(Rect){x - size, y - size, size * 2 + 1, size * 2 + 1}, size, c);
+        if (age < life / 3)
+            render_round_fill(r,(Rect){x - 1, y - 1, 3, 3},1,(SDL_Color){255,255,255,(Uint8)(fade)});
+        SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
+    }
+}
+static void victory_fireworks(SDL_Renderer *r, uint64_t now) {
+    /* Looping multi-burst display; pure function of now for capture stability. */
+    const int cycle = 2400;
+    int t = (int)(now % (uint64_t)cycle);
+    const struct { int x, y; unsigned seed; int start; int life; } bursts[] = {
+        {120, 110, 0x11u, 0, 900},
+        {320, 90, 0x29u, 180, 950},
+        {520, 120, 0x3Bu, 360, 900},
+        {200, 200, 0x47u, 540, 1000},
+        {440, 180, 0x59u, 720, 1000},
+        {300, 150, 0x61u, 980, 1100},
+        {160, 250, 0x6Du, 1200, 950},
+        {480, 240, 0x73u, 1400, 950},
+        {360, 210, 0x85u, 1650, 1000},
+        {240, 130, 0x97u, 1900, 900},
+    };
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
+    color(r,(SDL_Color){0,0,0,55}); fill(r,(Rect){0,0,640,480});
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
+    for (unsigned i = 0; i < sizeof bursts / sizeof bursts[0]; ++i) {
+        int age = t - bursts[i].start;
+        if (age < 0) age += cycle;
+        if (age >= bursts[i].life) continue;
+        firework_burst(r, bursts[i].x, bursts[i].y, bursts[i].seed + (unsigned)(now / (uint64_t)cycle), age, bursts[i].life);
+    }
+    /* Rising launch trails for the next burst window. */
+    for (unsigned i = 0; i < sizeof bursts / sizeof bursts[0]; ++i) {
+        int lead = bursts[i].start - 120;
+        if (lead < 0) lead += cycle;
+        int age = t - lead;
+        if (age < 0) age += cycle;
+        if (age >= 120) continue;
+        int y = 430 - (age * (430 - bursts[i].y)) / 120;
+        SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
+        render_round_fill(r,(Rect){bursts[i].x - 1, y - 4, 3, 8},1,(SDL_Color){255,230,160,200});
+        SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
+    }
 }
 static void menu_text(SDL_Renderer *r, int center, int y, const char *label, int width, float zoom) {
     color(r,(SDL_Color){43,35,24,255});
@@ -19,15 +103,16 @@ static void menu_text(SDL_Renderer *r, int center, int y, const char *label, int
 }
 static void top_pile_visible(SDL_Renderer *r, const Pile *p, Rect b, const PlayUI *ui,
                              KlondikePile ref, BackTheme theme) {
-    outline(r,b,0,(SDL_Color){119,163,137,255});
     const CardState *top = pile_top(p);
     if (ui->held && ui->source.zone == ref.zone && ui->source.index == ref.index) {
         top = ui->source_start ? &p->cards[ui->source_start - 1] : NULL;
     }
-    if (top) { shadow(r,b,46); render_card(r,b,top,theme); }
-    else {
-        color(r,(SDL_Color){119,163,137,255});
-        render_text(r,b.x+8,b.y+44,ref.zone == K_STOCK ? "STOCK" : ref.zone == K_WASTE ? "WASTE" : "ACE",1);
+    if (top) {
+        outline(r,b,0,(SDL_Color){119,163,137,255});
+        shadow(r,b,46);
+        render_card(r,b,top,theme);
+    } else {
+        empty_slot(r,b,ref.zone == K_STOCK ? "STOCK" : ref.zone == K_WASTE ? "WASTE" : "ACE");
     }
 }
 static void menu_panel(SDL_Renderer *r, Rect b) {
@@ -142,10 +227,11 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
         top_pile_visible(r,&s->foundations[f],layout_slot(l,f+3,false),ui,(KlondikePile){K_FOUNDATION,f},theme);
     for (unsigned col = 0; col < 7; ++col) {
         const Pile *p = &s->tableau[col];
-        outline(r,layout_slot(l,col,true),0,(SDL_Color){119,163,137,255});
         size_t visible_count = p->count;
         if (ui->held && ui->source.zone == K_TABLEAU && ui->source.index == col)
             visible_count = ui->source_start;
+        if (!visible_count) empty_slot(r,layout_slot(l,col,true),NULL);
+        else outline(r,layout_slot(l,col,true),0,(SDL_Color){119,163,137,255});
         for (size_t i = 0; i < visible_count; ++i) {
             Rect b = play_card_rect(l,p,col,i);
             if (i + 1 == visible_count) shadow(r,b,40);
@@ -180,6 +266,7 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
         SDL_Color held_color = play_invalid_outline(ui,now) ? (SDL_Color){255,42,54,255} : (SDL_Color){119,218,255,255};
         render_round_outline(r,bounds,10,4,held_color);
     }
+    if (klondike_won(s) && ui->screen == MENU_PLAYING) victory_fireworks(r,now);
     /* Fixed status strip, always on top of table/carry. */
     status_bar(r,(Rect){6,2,628,l->status_h-4});
     char label[96];
