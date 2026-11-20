@@ -3,6 +3,7 @@
 #include "play_view.h"
 #include "audio.h"
 #include "fx.h"
+#include "sdl_compat.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
