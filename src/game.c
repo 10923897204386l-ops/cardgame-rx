@@ -38,14 +38,22 @@ static void deal_intro_fx(PlayFX *fx, const KlondikeState *s, const Layout *l, u
     if (!fx_enabled(fx) || !s || !l) return;
     Rect stock = layout_slot(l, 0, false);
     unsigned n = 0;
-    for (unsigned col = 0; col < 7 && n < FX_MAX_MOTIONS; ++col) {
-        const Pile *p = &s->tableau[col];
-        if (!p->count) continue;
-        Rect to = play_card_rect(l, p, col, p->count - 1);
-        CardState c = p->cards[p->count - 1];
-        fx_push_motion(fx, FX_DEAL, stock, to, c, now + n * 18, 220);
-        ++n;
+    for (unsigned row = 0; row < 7 && n < FX_MAX_MOTIONS; ++row) {
+        for (unsigned col = row; col < 7 && n < FX_MAX_MOTIONS; ++col) {
+            const Pile *p = &s->tableau[col];
+            if (row >= p->count) continue;
+            Rect to = play_card_rect(l, p, col, row);
+            CardState c = p->cards[row];
+            fx_push_motion(fx, FX_DEAL, stock, to, c, now + n * 10u, 110u);
+            ++n;
+        }
     }
+}
+
+static void start_new_game_audio(bool sound) {
+    if (!sound) return;
+    audio_play(SFX_SHUFFLE);
+    audio_play(SFX_DECK_TAP);
 }
 
 static void handle_play_event(PlayEvent pe, PlayUI *ui, KlondikeGame *game, PlayFX *fx,
@@ -56,7 +64,7 @@ static void handle_play_event(PlayEvent pe, PlayUI *ui, KlondikeGame *game, Play
         if (sound && ui->screen != MENU_PLAYING) audio_play(SFX_MENU);
     }
     if (pe == PLAY_NEW_GAME) {
-        if (sound) { audio_play(SFX_SHUFFLE); audio_play(SFX_DECK_TAP); }
+        start_new_game_audio(sound);
         fx_clear(fx);
         deal_intro_fx(fx, &game->state, layout, now);
     } else if (pe == PLAY_COMMITTED) {
@@ -220,7 +228,7 @@ int main(int argc, char **argv) {
     audio_set_music_volume((float)music_volume_pct / 100.0f);
     audio_set_menu_music_active(true);
 
-    if (sound && audio_enabled()) { audio_play(SFX_SHUFFLE); audio_play(SFX_DECK_TAP); }
+    if (sound && audio_enabled()) start_new_game_audio(true);
     deal_intro_fx(&fx, &game.state, &layout, SDL_GetTicks64());
     fprintf(stderr, "loop: enter main menu\n");
     fflush(stderr);

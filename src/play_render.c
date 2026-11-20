@@ -15,16 +15,16 @@ static void shadow(SDL_Renderer *r, Rect b, int alpha) {
 }
 /* Recessed darker-felt empty pile base: same fabric family, ~15% darker. */
 static void empty_slot(SDL_Renderer *r, Rect b, const char *label) {
-    /* Stronger recessed well so center samples clearly darker than surrounding felt. */
-    render_round_fill(r, b, 10, (SDL_Color){4, 28, 18, 255});
-    render_round_fill(r, (Rect){b.x + 2, b.y + 2, b.w - 4, b.h - 4}, 8, (SDL_Color){8, 36, 24, 255});
+    /* Keep the underlying felt texture visible on device so wells read green, not black. */
     SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-    render_round_fill(r, (Rect){b.x + 1, b.y + 1, b.w - 2, 11}, 8, (SDL_Color){0, 0, 0, 84});
-    render_round_fill(r, (Rect){b.x + 4, b.y + 4, b.w - 8, b.h - 8}, 7, (SDL_Color){0, 0, 0, 34});
-    render_round_fill(r, (Rect){b.x + 5, b.y + b.h - 13, b.w - 10, 7}, 5, (SDL_Color){255, 255, 255, 12});
+    render_round_fill(r, b, 10, (SDL_Color){7, 36, 24, 188});
+    render_round_fill(r, (Rect){b.x + 2, b.y + 2, b.w - 4, b.h - 4}, 8, (SDL_Color){12, 54, 36, 140});
+    render_round_fill(r, (Rect){b.x + 1, b.y + 1, b.w - 2, 11}, 8, (SDL_Color){0, 0, 0, 52});
+    render_round_fill(r, (Rect){b.x + 4, b.y + 4, b.w - 8, b.h - 8}, 7, (SDL_Color){0, 0, 0, 22});
+    render_round_fill(r, (Rect){b.x + 5, b.y + b.h - 13, b.w - 10, 7}, 5, (SDL_Color){255, 247, 220, 22});
     SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
-    render_round_outline(r, b, 10, 1, (SDL_Color){16, 54, 38, 255});
-    render_round_outline(r, (Rect){b.x + 1, b.y + 1, b.w - 2, b.h - 2}, 9, 1, (SDL_Color){4, 18, 12, 255});
+    render_round_outline(r, b, 10, 1, (SDL_Color){18, 70, 48, 255});
+    render_round_outline(r, (Rect){b.x + 1, b.y + 1, b.w - 2, b.h - 2}, 9, 1, (SDL_Color){7, 28, 18, 255});
     color(r, (SDL_Color){186, 214, 186, 255});
     if (label) render_text(r, b.x + 8, b.y + 44, label, 1);
 }

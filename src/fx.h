@@ -5,7 +5,7 @@
 #include "render.h"
 #include <SDL.h>
 #include <stdbool.h>
-enum { FX_MAX_MOTIONS = 24 };
+enum { FX_MAX_MOTIONS = 32 };
 typedef enum { FX_SLIDE = 0, FX_FLIP, FX_SETTLE, FX_DEAL } FxKind;
 typedef struct {
     bool active;

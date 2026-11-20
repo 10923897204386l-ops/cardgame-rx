@@ -49,7 +49,9 @@ static void synth(SfxId id, Sint16 *out, int count, int rate) {
             break;
         }
         case SFX_DRAW:
-            sample = grit * expf(-180.0f * t) * 2800.0f + sinf(900.0f * t) * expf(-40.0f * t) * 900.0f;
+            sample = grit * expf(-240.0f * t) * 1800.0f +
+                     sinf(1400.0f * t) * expf(-65.0f * t) * 650.0f +
+                     sinf(2900.0f * t) * expf(-110.0f * t) * 420.0f;
             break;
         case SFX_INVALID:
             sample = (sinf(6.2831853f * 180.0f * t) + 0.4f * sinf(6.2831853f * 190.0f * t)) *
@@ -70,14 +72,18 @@ static void synth(SfxId id, Sint16 *out, int count, int rate) {
         }
         case SFX_SHUFFLE:
         default: {
-            float local = fmodf(t, 0.07f);
-            int burst = (int)(t / 0.07f);
-            if (burst < 12)
-                sample = grit * expf(-90.0f * local) * (2200.0f + 200.0f * (burst % 3));
-            else {
-                float age = t - 0.84f;
-                if (age < 0) age = 0;
-                sample = (grit * 900.0f + sinf(900.0f * age) * 1400.0f) * expf(-25.0f * age);
+            float burst_len = 0.045f;
+            float local = fmodf(t, burst_len);
+            int burst = (int)(t / burst_len);
+            if (burst < 14) {
+                float scrape = grit * expf(-70.0f * local) * (2600.0f + 240.0f * (burst % 4));
+                float flick = sinf((2200.0f + 130.0f * (burst % 5)) * local) * expf(-145.0f * local) * 680.0f;
+                sample = scrape + flick;
+            } else {
+                float age = t - burst_len * 14.0f;
+                if (age < 0.0f) age = 0.0f;
+                sample = (grit * 700.0f + sinf(760.0f * age) * 1500.0f + sinf(1320.0f * age) * 620.0f) *
+                         expf(-18.0f * age);
             }
             break;
         }
