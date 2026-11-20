@@ -6,6 +6,10 @@ static void fill(SDL_Renderer *r, Rect b) { SDL_Rect rect = {b.x,b.y,b.w,b.h}; S
 static void outline(SDL_Renderer *r, Rect b, int expand, SDL_Color c) {
     render_round_outline(r,(Rect){b.x-expand,b.y-expand,b.w+2*expand,b.h+2*expand},8,1,c);
 }
+static void menu_text(SDL_Renderer *r, int center, int y, const char *label, int width, float zoom) {
+    color(r,(SDL_Color){43,35,24,255});
+    if (!render_menu_text(r,center,y,label,width,zoom)) render_text(r,center-width/4,y,label,2);
+}
 static void top_pile_visible(SDL_Renderer *r, const Pile *p, Rect b, const PlayUI *ui,
                              KlondikePile ref, BackTheme theme) {
     outline(r,b,0,(SDL_Color){119,163,137,255});
@@ -30,7 +34,7 @@ static void menu_item(SDL_Renderer *r, int y, const char *label, bool selected) 
         render_round_outline(r,row,8,2,(SDL_Color){43,35,24,255});
     }
     color(r,(SDL_Color){43,35,24,255});
-    render_text(r,200,y,label,2);
+    if (!render_menu_text(r,320,y-4,label,260,1.0f)) render_text(r,200,y,label,2);
 }
 static void menu_overlay(SDL_Renderer *r, const PlayUI *ui) {
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
@@ -39,19 +43,19 @@ static void menu_overlay(SDL_Renderer *r, const PlayUI *ui) {
     if (ui->screen == MENU_CONFIRM_NEW || ui->screen == MENU_CONFIRM_MAIN) {
         menu_panel(r,(Rect){115,145,410,170});
         color(r,(SDL_Color){43,35,24,255});
-        render_text(r,148,170,ui->screen == MENU_CONFIRM_MAIN ? "RETURN TO MAIN MENU" : "DISCARD AND DEAL NEW GAME",2);
-        render_text(r,205,230,ui->confirm_yes ? "NO    -YES-" : "-NO-    YES",2);
+        menu_text(r,320,166,ui->screen == MENU_CONFIRM_MAIN ? "RETURN TO MAIN MENU" : "DISCARD AND DEAL NEW GAME",360,0.9f);
+        menu_text(r,320,226,ui->confirm_yes ? "NO    -YES-" : "-NO-    YES",260,1.0f);
         render_text(r,190,278,"A SELECT   B BACK",1);
     } else if (ui->screen == MENU_OPTIONS) {
         menu_panel(r,(Rect){120,128,400,220});
         color(r,(SDL_Color){43,35,24,255});
-        render_text(r,212,154,"OPTIONS",2);
+        menu_text(r,320,150,"OPTIONS",260,1.0f);
         render_text(r,160,215,"No configurable options yet",1);
         render_text(r,188,296,"A OR B BACK",1);
     } else {
         menu_panel(r,ui->screen == MENU_MAIN ? (Rect){126,116,388,264} : (Rect){126,104,388,292});
         color(r,(SDL_Color){43,35,24,255});
-        render_text(r,180,136,ui->screen == MENU_MAIN ? "CROUPIER-RX" : "PAUSED",2);
+        menu_text(r,320,132,ui->screen == MENU_MAIN ? "CROUPIER-RX" : "PAUSED",320,1.15f);
         const char *main_items[] = {"PLAY","NEW GAME","OPTIONS","QUIT"};
         const char *pause_items[] = {"RESUME","NEW GAME","OPTIONS","MAIN MENU"};
         const char **items = ui->screen == MENU_MAIN ? main_items : pause_items;

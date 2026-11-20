@@ -7,6 +7,9 @@
 #ifndef CARDGAME_ASSET_DIR
 #define CARDGAME_ASSET_DIR "assets/runtime"
 #endif
+#ifndef CARDGAME_FONT_PATH
+#define CARDGAME_FONT_PATH "assets/fonts/GoRXInk.ttf"
+#endif
 
 static void usage(void) {
     puts("cardgame [--seed N|random] [--scale 1..4] [--theme blue|wine]\n"
@@ -60,6 +63,7 @@ int main(int argc, char **argv) {
     PlayUI ui; play_init(&ui,&game.state,seed); Layout layout = layout_default();
     if (!window || !screen || !surface || !canvas || !texture) { result = 1; goto cleanup; }
     (void)render_assets_open(canvas,CARDGAME_ASSET_DIR);
+    (void)render_menu_font_open(canvas,CARDGAME_FONT_PATH);
     while (!ui.quit) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) (void)desktop_event(&ui,&game,&keys,&event,SDL_GetTicks64());

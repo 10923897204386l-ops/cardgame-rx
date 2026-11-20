@@ -1,10 +1,15 @@
 #include "render.h"
 #include <stdio.h>
 #include <string.h>
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "third_party/stb_truetype.h"
 /* Original 5x7 bitmap lettering and geometric art; no external assets. */
+enum { FONT_ATLAS_SIZE = 256, FONT_FIRST_GLYPH = 32, FONT_GLYPH_COUNT = 95 };
 static struct {
     SDL_Renderer *renderer;
     SDL_Texture *faces[4][14], *backs[2], *felt, *title;
+    SDL_Texture *font_atlas;
+    stbtt_bakedchar glyphs[FONT_GLYPH_COUNT];
 } assets;
 static SDL_Texture *load_texture(SDL_Renderer *r, const char *path) {
     SDL_Surface *s = SDL_LoadBMP(path);
@@ -49,8 +54,61 @@ void render_assets_close(void) {
     for (int i=0;i<2;++i) { if (assets.backs[i]) SDL_DestroyTexture(assets.backs[i]); assets.backs[i]=NULL; }
     if (assets.felt) SDL_DestroyTexture(assets.felt);
     if (assets.title) SDL_DestroyTexture(assets.title);
+    render_menu_font_close();
     assets.felt = assets.title = NULL;
     assets.renderer = NULL;
+}
+bool render_menu_font_open(SDL_Renderer *renderer, const char *filename) {
+    if (assets.font_atlas) { SDL_DestroyTexture(assets.font_atlas); assets.font_atlas = NULL; }
+    size_t length = 0;
+    unsigned char *ttf = SDL_LoadFile(filename,&length);
+    unsigned char *bitmap = SDL_malloc(FONT_ATLAS_SIZE * FONT_ATLAS_SIZE);
+    if (!renderer || !ttf || !bitmap || !length ||
+        stbtt_BakeFontBitmap(ttf,0,24,bitmap,FONT_ATLAS_SIZE,FONT_ATLAS_SIZE,
+                             FONT_FIRST_GLYPH,FONT_GLYPH_COUNT,assets.glyphs) <= 0) {
+        SDL_free(ttf); SDL_free(bitmap); return false;
+    }
+    SDL_free(ttf);
+    SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0,FONT_ATLAS_SIZE,FONT_ATLAS_SIZE,32,SDL_PIXELFORMAT_ARGB8888);
+    if (surface) {
+        for (int y=0;y<FONT_ATLAS_SIZE;++y) {
+            Uint32 *pixels=(Uint32 *)((Uint8 *)surface->pixels+y*surface->pitch);
+            for (int x=0;x<FONT_ATLAS_SIZE;++x) pixels[x]=0x00ffffffu | (Uint32)bitmap[y*FONT_ATLAS_SIZE+x] << 24;
+        }
+        assets.font_atlas = SDL_CreateTextureFromSurface(renderer,surface);
+        SDL_FreeSurface(surface);
+    }
+    SDL_free(bitmap);
+    if (!assets.font_atlas) return false;
+    SDL_SetTextureColorMod(assets.font_atlas,43,35,24);
+    SDL_SetTextureBlendMode(assets.font_atlas,SDL_BLENDMODE_BLEND);
+    return true;
+}
+void render_menu_font_close(void) {
+    if (assets.font_atlas) SDL_DestroyTexture(assets.font_atlas);
+    assets.font_atlas = NULL;
+}
+static const stbtt_bakedchar *font_glyph(unsigned char c) {
+    int index = c - FONT_FIRST_GLYPH;
+    if (index < 0 || index >= FONT_GLYPH_COUNT) index = '?' - FONT_FIRST_GLYPH;
+    return &assets.glyphs[index];
+}
+bool render_menu_text(SDL_Renderer *renderer,int center_x,int y,const char *text,int max_width,float zoom) {
+    if (!assets.font_atlas || !text) return false;
+    float width = 0;
+    for (const char *c=text; *c; ++c) width += font_glyph((unsigned char)*c)->xadvance;
+    float scale = width * zoom > max_width ? (float)max_width / width : zoom;
+    float pen = center_x - width * scale / 2.0f;
+    for (; *text; ++text) {
+        const stbtt_bakedchar *g = font_glyph((unsigned char)*text);
+        SDL_Rect src = {g->x0,g->y0,g->x1-g->x0,g->y1-g->y0};
+        SDL_Rect dst = {(int)(pen + g->xoff * scale + 0.5f),
+                        y + (int)(17 * zoom) + (int)(g->yoff * scale),
+                        (int)(src.w * scale + 0.5f),(int)(src.h * scale + 0.5f)};
+        if (dst.w && dst.h) SDL_RenderCopy(renderer,assets.font_atlas,&src,&dst);
+        pen += g->xadvance * scale;
+    }
+    return true;
 }
 static bool copy_texture(SDL_Renderer *r, SDL_Texture *texture, Rect b) {
     if (!texture) return false;
