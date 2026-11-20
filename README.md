@@ -148,8 +148,8 @@ of window scale, and `--smoke` to present one window frame then exit:
 ```
 
 Prefix capture commands with `SDL_VIDEODRIVER=dummy` when no display is present.
-PNG evidence is in `docs/screenshots/`; M0.1C views are in `m01c/` and M0.1D
-views are in `m01d/`.
+PNG evidence is in `docs/screenshots/`; M0.1C views are in `m01c/`, M0.1D
+views are in `m01d/` and M0.1E desktop-polish validation views are in `m01e/`.
 The desktop test writes invalid, pause, confirmation, controls-bar hidden/shown,
 tall, held and win BMP fixtures in its build/test working directory. BMP capture adds no image library;
 the committed PNGs are lossless conversions for review.
