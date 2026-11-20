@@ -21,11 +21,18 @@ Updated: 2026-11-20.
   Evidence: `docs/screenshots/m01c/`.
 - M0.1A normal/stress captures remain 640×480 and pixel-identical to baseline.
 - Configurable bounded undo and GNU/Linux failed-allocation tests pass.
-- M0.1D is implemented on `feat/m0-1d-croupier-visuals`: locked title art,
+- M0.1D is merged as PR #5 (`02c61ff`): locked title art,
   Kennard card/felt assets, lighter green felt with sparse peripheral petals,
   Go-RX-style font/menu panels, main menu, expanded pause menu and Select-toggled
   controls bar with L2+Select undo. Acceptance screenshots are in
   `docs/screenshots/m01d/`.
+- M0.1E is implemented on `feat/m0-1e-desktop-polish`: controls bar now reflects
+  active key bindings, desktop/rules-only/clean-clone validation passes, and
+  release-candidate screenshots are in `docs/screenshots/m01e/`.
+- The approved Permanent Marker interface font replacement is implemented on the
+  same M0.1E branch: genuine Google Fonts / Font Diner TTF, Apache-2.0 licence
+  and metadata are bundled, Go RX Ink is removed, and evidence screenshots are in
+  `docs/screenshots/m01e-permanent-marker/`.
 - No RG35XXSP hardware testing, device mapping or packaging has been performed.
 
 ## Goal
@@ -33,14 +40,14 @@ Reusable card-game engine for RG35XXSP; Klondike first, 500 later. Keep rules,
 input, transient interaction and rendering separate.
 
 ## Current milestone
-M0.1D Croupier-RX visuals, menus and controls HUD are implemented locally on
-`feat/m0-1d-croupier-visuals`, awaiting final review and PR. See
-`tasks/M0.1D-REPORT.md` for commands and limits.
+M0.1E desktop polish and validation is implemented locally on
+`feat/m0-1e-desktop-polish`, awaiting final review and PR. See
+`tasks/M0.1E-REPORT.md` for commands, evidence and remaining risks.
 
 ## Known limits
 - Tall-column layout is a readable prototype, not final device-polished scrolling.
 - Saves, audio and physical device support are absent.
 
 ## One next action
-Review M0.1D at native 640×480, then open a squash-merge PR if accepted. Do not
+Review M0.1E at native 640×480, then open a squash-merge PR if accepted. Do not
 begin device packaging or another milestone without approval.

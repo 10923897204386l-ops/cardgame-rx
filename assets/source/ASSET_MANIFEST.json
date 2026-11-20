@@ -5,5 +5,16 @@
     "croupier-rx-title-640x480.png": "1_AKG-V0qKx7oJulRT7Cs_-QHt3qBkI4-",
     "cardgame-rx-assets-complete.zip": "1UOKcQPsKy47AmZHzuHt4fGwUfRnRak9G"
   },
+  "ui_font": {
+    "family": "Permanent Marker",
+    "file": "assets/fonts/PermanentMarker-Regular.ttf",
+    "sha256": "28f82c8a7943cb8e9d599f8554da1d4fc75dbcf69b9885ad6c0611d20c6946c5",
+    "license": "Apache License 2.0",
+    "license_file": "assets/fonts/PermanentMarker-Apache-2.0-LICENSE.txt",
+    "metadata_file": "assets/fonts/PermanentMarker-METADATA.pb",
+    "upstream": "https://github.com/google/fonts/tree/main/apache/permanentmarker",
+    "downloaded_from": "https://raw.githubusercontent.com/google/fonts/main/apache/permanentmarker/PermanentMarker-Regular.ttf",
+    "copyright": "Copyright (c) 2010 by Font Diner, Inc. All rights reserved."
+  },
   "runtime_format": "BMP files generated losslessly from pinned PNG assets for SDL_LoadBMP runtime loading"
 }

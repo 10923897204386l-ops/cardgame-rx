@@ -8,7 +8,7 @@
 #define CARDGAME_ASSET_DIR "assets/runtime"
 #endif
 #ifndef CARDGAME_FONT_PATH
-#define CARDGAME_FONT_PATH "assets/fonts/GoRXInk.ttf"
+#define CARDGAME_FONT_PATH "assets/fonts/PermanentMarker-Regular.ttf"
 #endif
 
 static void usage(void) {
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) (void)desktop_event(&ui,&game,&keys,&event,SDL_GetTicks64());
         if (ui.quit) break;
-        play_render(canvas,&game.state,&ui,&layout,back_theme(alternate),SDL_GetTicks64());
+        play_render(canvas,&game.state,&ui,&layout,&keys,back_theme(alternate),SDL_GetTicks64());
         SDL_RenderPresent(canvas);
         if (capture) { if (SDL_SaveBMP(surface,capture) != 0) result = 1; break; }
         if (SDL_UpdateTexture(texture,NULL,surface->pixels,surface->pitch) != 0 ||
