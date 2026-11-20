@@ -2,8 +2,33 @@
 static PlayEvent press(PlayUI *ui, KlondikeGame *g, InputAction action) {
     return play_dispatch(ui,g,action,1000);
 }
+static void start_play(PlayUI *ui, KlondikeGame *g) {
+    CHECK(ui->screen == MENU_MAIN && ui->paused);
+    CHECK(press(ui,g,INPUT_A) == PLAY_NONE);
+    CHECK(ui->screen == MENU_PLAYING && !ui->paused);
+}
+static void menus(void) {
+    KlondikeGame g = {0}; klondike_new_game(&g,42); PlayUI ui; play_init(&ui,&g.state,42);
+    KlondikeState initial = g.state;
+    press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_DOWN); CHECK(ui.menu == 2);
+    press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_OPTIONS);
+    press(&ui,&g,INPUT_B); CHECK(ui.screen == MENU_MAIN && ui.menu == 0);
+    press(&ui,&g,INPUT_DOWN); CHECK(press(&ui,&g,INPUT_A) == PLAY_NEW_GAME);
+    CHECK(ui.screen == MENU_PLAYING && ui.seed == 43 && !g.history && !g.undo_depth);
+    CHECK(!same_state(&g.state,&initial));
+    press(&ui,&g,INPUT_START); CHECK(ui.screen == MENU_PAUSE && ui.menu == 0);
+    press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_A);
+    CHECK(ui.screen == MENU_OPTIONS); press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_PAUSE);
+    press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_A);
+    CHECK(ui.screen == MENU_CONFIRM_MAIN && !ui.confirm_yes);
+    press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_PAUSE);
+    press(&ui,&g,INPUT_A);
+    press(&ui,&g,INPUT_RIGHT); press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_MAIN && ui.paused);
+    klondike_dispose(&g);
+}
 static void navigation(void) {
     KlondikeGame g = {0}; g.state = run_fixture(); PlayUI ui; play_init(&ui,&g.state,42);
+    start_play(&ui,&g);
     KlondikeState initial = g.state;
     CHECK(ui.area == AREA_DRAW && ui.focus[0] == 0 && ui.selected == 1);
     press(&ui,&g,INPUT_LEFT); CHECK(ui.area == AREA_FOUNDATIONS && ui.focus[2] == 3);
@@ -32,6 +57,7 @@ static void navigation(void) {
 }
 static void carrying(void) {
     KlondikeGame g = {0}; g.state = run_fixture(); PlayUI ui; play_init(&ui,&g.state,42);
+    start_play(&ui,&g);
     KlondikeState before = g.state;
     press(&ui,&g,INPUT_R1); CHECK(press(&ui,&g,INPUT_B) == PLAY_NONE);
     CHECK(ui.held && ui.source_start == 1 && play_held_count(&ui,&g.state) == 4);
@@ -68,6 +94,7 @@ static void carrying(void) {
 static void waste_and_foundations(void) {
     for (PlayArea area = AREA_DRAW; area < AREA_COUNT; ++area) {
         KlondikeGame g = {0}; g.state = run_fixture(); PlayUI ui; play_init(&ui,&g.state,42);
+        start_play(&ui,&g);
         ui.area = area; ui.focus[area] = 1;
         KlondikePile cursor = play_focus(&ui); KlondikeState before = g.state;
         press(&ui,&g,INPUT_A);
@@ -86,6 +113,7 @@ static void waste_and_foundations(void) {
     add(&g.state.foundations[0],CLUBS,1,true);
     add(&g.state.tableau[0],SPADES,2,true); add(&g.state.tableau[0],HEARTS,1,true);
     complete(&g.state); PlayUI ui; play_init(&ui,&g.state,42);
+    start_play(&ui,&g);
     press(&ui,&g,INPUT_R1); KlondikeState before = g.state;
     CHECK(press(&ui,&g,INPUT_X) == PLAY_ERROR); /* selected run, not hidden auto-top */
     CHECK(same_state(&g.state,&before)); press(&ui,&g,INPUT_UP);
@@ -97,6 +125,7 @@ static void waste_and_foundations(void) {
 }
 static void stock_and_pause(void) {
     KlondikeGame g = {0}; klondike_new_game(&g,42); PlayUI ui; play_init(&ui,&g.state,42);
+    start_play(&ui,&g);
     CHECK(press(&ui,&g,INPUT_A) == PLAY_ERROR && !ui.held);
     CHECK(press(&ui,&g,INPUT_B) == PLAY_ERROR && !ui.held);
     KlondikeState before = g.state;
@@ -115,25 +144,24 @@ static void stock_and_pause(void) {
     CHECK(same_state(&g.state,&empty_stock) && g.history == history && g.undo_depth == depth && ui.held);
     press(&ui,&g,INPUT_A); CHECK(!ui.paused && ui.held); /* Resume */
     press(&ui,&g,INPUT_START); press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_A);
-    CHECK(ui.confirming && !ui.confirm_yes);
-    press(&ui,&g,INPUT_A); CHECK(ui.paused && !ui.confirming && ui.held); /* No */
+    CHECK(ui.screen == MENU_CONFIRM_NEW && !ui.confirm_yes);
+    press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_PAUSE && ui.held); /* No */
     CHECK(same_state(&g.state,&empty_stock) && g.history == history);
     press(&ui,&g,INPUT_A); press(&ui,&g,INPUT_RIGHT); press(&ui,&g,INPUT_B);
-    CHECK(!ui.confirming && ui.paused && same_state(&g.state,&empty_stock));
+    CHECK(ui.screen == MENU_PAUSE && same_state(&g.state,&empty_stock));
     press(&ui,&g,INPUT_A); press(&ui,&g,INPUT_RIGHT);
     CHECK(press(&ui,&g,INPUT_A) == PLAY_NEW_GAME);
     KlondikeState expected; klondike_deal(&expected,43);
     CHECK(same_state(&g.state,&expected) && !ui.paused && !ui.held && !g.history && !g.undo_depth);
     CHECK(ui.area == AREA_DRAW && ui.focus[0] == 0 && ui.seed == 43);
     press(&ui,&g,INPUT_START); press(&ui,&g,INPUT_START); CHECK(!ui.paused);
-    press(&ui,&g,INPUT_START); press(&ui,&g,INPUT_UP);
-    CHECK(press(&ui,&g,INPUT_A) == PLAY_QUIT && ui.quit);
+    CHECK(press(&ui,&g,INPUT_QUIT) == PLAY_QUIT && ui.quit);
     CHECK(same_state(&g.state,&expected));
     CHECK(press(&ui,&g,INPUT_Y) == PLAY_NONE && same_state(&g.state,&expected));
     klondike_dispose(&g);
 }
 int main(void) {
-    navigation(); carrying(); waste_and_foundations(); stock_and_pause();
+    menus(); navigation(); carrying(); waste_and_foundations(); stock_and_pause();
     puts("play: focus, transient carry, atomic suffix/drop, 300ms invalid feedback, actions, pause and restart passed");
     return 0;
 }

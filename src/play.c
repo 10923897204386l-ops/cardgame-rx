@@ -79,7 +79,7 @@ static void spatial_vertical(PlayUI *ui, const KlondikeState *s, InputAction act
     }
 }
 void play_init(PlayUI *ui, const KlondikeState *s, uint32_t seed) {
-    *ui = (PlayUI){.seed = seed};
+    *ui = (PlayUI){.seed = seed, .screen = MENU_MAIN, .paused = true};
     select_default(ui, s);
 }
 size_t play_selected(const PlayUI *ui, const KlondikeState *s) {
@@ -120,39 +120,70 @@ static void cancel(PlayUI *ui, const KlondikeState *s) {
     ui->held = false;
     ui->invalid_until = 0;
 }
-static PlayEvent pause_action(PlayUI *ui, KlondikeGame *g, InputAction action) {
-    if (action == INPUT_B || action == INPUT_START) {
-        if (ui->confirming) { ui->confirming = false; ui->confirm_yes = false; }
-        else ui->paused = false;
+static bool action_back(InputAction action) { return action == INPUT_B || action == INPUT_START; }
+static void enter_play(PlayUI *ui) {
+    ui->screen = MENU_PLAYING;
+    ui->paused = false;
+    ui->confirming = false;
+    ui->confirm_yes = false;
+    ui->menu = 0;
+}
+static PlayEvent deal_new(PlayUI *ui, KlondikeGame *g) {
+    uint32_t seed = ui->seed + 1;
+    klondike_new_game(g, seed);
+    play_init(ui, &g->state, seed);
+    enter_play(ui);
+    return PLAY_NEW_GAME;
+}
+static PlayEvent menu_action(PlayUI *ui, KlondikeGame *g, InputAction action) {
+    if (action == INPUT_QUIT) { ui->quit = true; return PLAY_QUIT; }
+    if (ui->screen == MENU_OPTIONS) {
+        if (action_back(action) || action == INPUT_A) {
+            ui->screen = ui->return_screen;
+            ui->menu = 0;
+        }
         return PLAY_NONE;
     }
-    if (ui->confirming) {
+    if (ui->screen == MENU_CONFIRM_NEW || ui->screen == MENU_CONFIRM_MAIN) {
+        if (action_back(action)) { ui->screen = MENU_PAUSE; ui->confirm_yes = false; return PLAY_NONE; }
         if (action == INPUT_LEFT || action == INPUT_RIGHT || action == INPUT_UP || action == INPUT_DOWN)
             ui->confirm_yes = !ui->confirm_yes;
         if (action == INPUT_A) {
             if (ui->confirm_yes) {
-                uint32_t seed = ui->seed + 1;
-                klondike_new_game(g, seed);
-                play_init(ui, &g->state, seed);
-                return PLAY_NEW_GAME;
+                if (ui->screen == MENU_CONFIRM_MAIN) { ui->screen = MENU_MAIN; ui->paused = true; ui->held = false; ui->menu = 0; return PLAY_NONE; }
+                return deal_new(ui,g);
             }
-            ui->confirming = false;
+            ui->screen = MENU_PAUSE;
+            ui->confirm_yes = false;
         }
         return PLAY_NONE;
     }
-    if (action == INPUT_UP) ui->menu = (ui->menu + 2) % 3;
-    if (action == INPUT_DOWN) ui->menu = (ui->menu + 1) % 3;
+    unsigned count = ui->screen == MENU_MAIN ? 4 : 4;
+    if (action == INPUT_UP) ui->menu = (ui->menu + count - 1) % count;
+    if (action == INPUT_DOWN) ui->menu = (ui->menu + 1) % count;
+    if (ui->screen == MENU_PAUSE && action_back(action)) { enter_play(ui); return PLAY_NONE; }
     if (action != INPUT_A) return PLAY_NONE;
-    if (ui->menu == 0) ui->paused = false;
-    else if (ui->menu == 1) { ui->confirming = true; ui->confirm_yes = false; }
-    else { ui->quit = true; return PLAY_QUIT; }
+    if (ui->screen == MENU_MAIN) {
+        if (ui->menu == 0) enter_play(ui);
+        else if (ui->menu == 1) return deal_new(ui,g);
+        else if (ui->menu == 2) { ui->return_screen = MENU_MAIN; ui->screen = MENU_OPTIONS; }
+        else { ui->quit = true; return PLAY_QUIT; }
+    } else if (ui->screen == MENU_PAUSE) {
+        if (ui->menu == 0) enter_play(ui);
+        else if (ui->menu == 1) { ui->screen = MENU_CONFIRM_NEW; ui->confirm_yes = false; }
+        else if (ui->menu == 2) { ui->return_screen = MENU_PAUSE; ui->screen = MENU_OPTIONS; }
+        else { ui->screen = MENU_CONFIRM_MAIN; ui->confirm_yes = false; }
+    }
     return PLAY_NONE;
+}
+static PlayEvent pause_action(PlayUI *ui, KlondikeGame *g, InputAction action) {
+    return menu_action(ui,g,action);
 }
 PlayEvent play_dispatch(PlayUI *ui, KlondikeGame *g, InputAction action, uint64_t now) {
     if (ui->quit || action >= INPUT_COUNT) return PLAY_NONE;
     if (action == INPUT_QUIT) { ui->quit = true; return PLAY_QUIT; }
-    if (ui->paused) return pause_action(ui, g, action);
-    if (action == INPUT_START) { ui->paused = true; ui->menu = 0; return PLAY_NONE; }
+    if (ui->screen != MENU_PLAYING) return pause_action(ui, g, action);
+    if (action == INPUT_START) { ui->paused = true; ui->screen = MENU_PAUSE; ui->menu = 0; return PLAY_NONE; }
     if (action == INPUT_L1 || action == INPUT_R1) {
         ui->area = (PlayArea)((ui->area + (action == INPUT_R1 ? 1 : 2)) % AREA_COUNT);
         select_default(ui, &g->state);

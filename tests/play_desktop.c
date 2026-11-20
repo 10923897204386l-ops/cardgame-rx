@@ -17,6 +17,11 @@ static PlayEvent key(PlayUI *ui,KlondikeGame *game,KeyboardMap *map,SDL_Scancode
     SDL_Event e; SDL_zero(e); e.type = SDL_KEYDOWN; e.key.keysym.scancode = code;
     return desktop_event(ui,game,map,&e,now);
 }
+static void start_play(PlayUI *ui, KlondikeGame *game, KeyboardMap *keys) {
+    CHECK(ui->screen == MENU_MAIN);
+    key(ui,game,keys,SDL_SCANCODE_D,1);
+    CHECK(ui->screen == MENU_PLAYING);
+}
 static void mappings(void) {
     KeyboardMap keys = keyboard_default(); CHECK(keyboard_valid(&keys));
     const SDL_Scancode devkit[INPUT_COUNT] = {
@@ -48,6 +53,8 @@ static void mappings(void) {
 static void carry_and_flash(void) {
     KlondikeGame g = {0}; g.state = run_fixture(); PlayUI ui; play_init(&ui,&g.state,42);
     KeyboardMap keys = keyboard_default();
+    draw(&g.state,&ui,0); CHECK(SDL_SaveBMP(surface,"play-main-menu.bmp") == 0);
+    start_play(&ui,&g,&keys);
     key(&ui,&g,&keys,SDL_SCANCODE_SPACE,100); key(&ui,&g,&keys,SDL_SCANCODE_S,110);
     CHECK(ui.held && play_held_count(&ui,&g.state) == 4);
     key(&ui,&g,&keys,SDL_SCANCODE_RIGHT,120); /* 9C wants only [8H,7C,6D] */
@@ -89,7 +96,7 @@ static void carry_and_flash(void) {
     key(&ui,&g,&keys,SDL_SCANCODE_E,850); draw(&g.state,&ui,850);
     CHECK(SDL_SaveBMP(surface,"play-paused.bmp") == 0);
     key(&ui,&g,&keys,SDL_SCANCODE_DOWN,860); key(&ui,&g,&keys,SDL_SCANCODE_D,870);
-    CHECK(ui.confirming && !ui.confirm_yes && same_state(&g.state,&before));
+    CHECK(ui.screen == MENU_CONFIRM_NEW && !ui.confirm_yes && same_state(&g.state,&before));
     draw(&g.state,&ui,870); CHECK(SDL_SaveBMP(surface,"play-confirm.bmp") == 0);
     klondike_dispose(&g);
 }
@@ -103,7 +110,7 @@ static void tall_columns(void) {
         for (unsigned rank = 1; rank <= 13; ++rank) if (!used[suit][rank]) add(&s.tableau[0],suit,rank,false);
     for (unsigned rank = 13; rank; --rank) add(&s.tableau[0],rank%2 ? SPADES : HEARTS,rank,true);
     CHECK(klondike_valid(&s));
-    PlayUI ui; play_init(&ui,&s,42); ui.area = AREA_TABLEAU;
+    PlayUI ui; play_init(&ui,&s,42); ui.screen = MENU_PLAYING; ui.paused = false; ui.area = AREA_TABLEAU;
     size_t first = play_first_face_up(&s.tableau[0]); CHECK(first == 39);
     for (size_t i = first; i < 52; ++i) {
         Rect card = play_card_rect(&layout,&s.tableau[0],0,i);
@@ -130,6 +137,7 @@ static void tall_columns(void) {
 static void sdl_key_playthrough(void) {
     KlondikeGame g = {0}; klondike_new_game(&g,42); PlayUI ui; play_init(&ui,&g.state,42);
     KeyboardMap keys = keyboard_default(); KlondikeState initial = g.state;
+    start_play(&ui,&g,&keys);
     /* Same SDL key boundary as the app: complete stock pass/recycle/undo. */
     for (int i = 0; i < 25; ++i) CHECK(key(&ui,&g,&keys,SDL_SCANCODE_A,(uint64_t)i*10) == PLAY_COMMITTED);
     CHECK(same_state(&g.state,&initial) && g.undo_depth == 25);
@@ -146,7 +154,7 @@ static void sdl_key_playthrough(void) {
     CHECK(key(&ui,&g,&keys,SDL_SCANCODE_S,400) == PLAY_ERROR && ui.held);
     key(&ui,&g,&keys,SDL_SCANCODE_D,410); CHECK(!ui.held && ui.focus[1] == 0);
     key(&ui,&g,&keys,SDL_SCANCODE_E,420); key(&ui,&g,&keys,SDL_SCANCODE_DOWN,430); key(&ui,&g,&keys,SDL_SCANCODE_D,440);
-    CHECK(ui.confirming); key(&ui,&g,&keys,SDL_SCANCODE_RIGHT,450);
+    CHECK(ui.screen == MENU_CONFIRM_NEW); key(&ui,&g,&keys,SDL_SCANCODE_RIGHT,450);
     CHECK(key(&ui,&g,&keys,SDL_SCANCODE_D,460) == PLAY_NEW_GAME);
     CHECK(ui.seed == 43 && !g.undo_depth); CHECK(klondike_valid(&g.state));
     SDL_Event repeat; SDL_zero(repeat); repeat.type = SDL_KEYDOWN; repeat.key.keysym.scancode = SDL_SCANCODE_A; repeat.key.repeat = 1;
@@ -160,6 +168,7 @@ static void winning(void) {
     for (Suit suit = CLUBS; suit <= SPADES; ++suit)
         for (unsigned rank = 1; rank <= 13; ++rank) add(&g.state.foundations[suit],suit,rank,true);
     CHECK(klondike_won(&g.state)); PlayUI ui; play_init(&ui,&g.state,42);
+    ui.screen = MENU_PLAYING; ui.paused = false;
     draw(&g.state,&ui,0); CHECK(SDL_SaveBMP(surface,"play-win.bmp") == 0);
     KlondikeState before = g.state;
     CHECK(play_dispatch(&ui,&g,INPUT_Y,0) == PLAY_ERROR && same_state(&g.state,&before));
