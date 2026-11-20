@@ -16,5 +16,18 @@
     "downloaded_from": "https://raw.githubusercontent.com/google/fonts/main/apache/permanentmarker/PermanentMarker-Regular.ttf",
     "copyright": "Copyright (c) 2010 by Font Diner, Inc. All rights reserved."
   },
+  "m01f_art_polish": {
+    "generator": "assets/source/tools/generate_m01f_art.py",
+    "source_dir": "assets/source/m01f",
+    "runtime_felt_sha256": "0ce30bfef0e7126a1e6f2c600bee299de723c842b7d856636c37b9b77cb64da2",
+    "runtime_back_navy_sha256": "5ccf10c20b4dc207650f6841b282b3965ca13ab40f3525baf97964272729d51e",
+    "runtime_back_wine_sha256": "a575f9c11a5d27d3f511b46cf92a6b4cc55181df8c73af645b6fdca5c4ed0e2b",
+    "representative_face_hashes": {
+      "AS.bmp": "44f6b303411f26890de9c77d721d499bf6cd3b7fbba0d0ee2c67ef38d662658e",
+      "KH.bmp": "3c0293fec7ef5aacab112fc83c096bad018fc3f5ca2255e112186e3fcdae7f4b"
+    },
+    "source": "Original generated felt, floral/petal decoration and blue/gold backs plus CC0 Kennard-derived warm ivory faces.",
+    "face_identity_count": 52
+  },
   "runtime_format": "BMP files generated losslessly from pinned PNG assets for SDL_LoadBMP runtime loading"
 }
