@@ -3,7 +3,7 @@
 Croupier-RX is a reusable card-game engine for RG35XXSP-class 640×480 devices,
 currently shipping playable desktop Klondike. M0.1D adds the Croupier-RX identity,
 locked Hawaiian casino title art, Go-RX-style menus, Kennard card faces, custom
-backs and a lighter textured green felt table with sparse peripheral petals. C17, SDL2 and CMake follow the shared
+backs and a rich emerald textured felt table with sparse tropical corner flowers and fallen petals. C17, SDL2 and CMake follow the shared
 RG35XX Devkit stack. No RG35XXSP build or hardware controls have been verified.
 
 ## Build, test and play
@@ -26,6 +26,8 @@ a display; rendering tests use offscreen software surfaces, without windows.
 ./build/desktop/cardgame --seed 42 --scale 2 --theme wine
 ./build/desktop/cardgame --seed random --undo-limit 128
 ./build/desktop/cardgame --bind b=F1 --bind start=Return
+./build/desktop/cardgame --music-volume 30
+./build/desktop/cardgame --mute-music
 ```
 
 Seed 42 is the deterministic default. `random` reads and prints an OS seed for
@@ -49,6 +51,7 @@ wine back. Custom image import is deferred.
 | Start | E | Pause / resume |
 | Select | Q | Show/hide optional controls bar, hidden by default |
 | L2+Select | Left Ctrl+Q | Undo one committed action when not holding cards |
+| Select+Start | Q+E | Quit Game confirmation; on Yes autosaves then exits cleanly |
 | Quit | Escape | Exit the desktop app |
 
 The area remembers its last pile (initially stock, tableau 0, foundation 0).
@@ -60,8 +63,12 @@ focus/selection only; the held source and candidate stay fixed. Focus uses a
 thicker rounded yellow outline, becoming green when the held candidate has a
 legal destination suffix.
 
-The app starts on a Croupier-RX main menu with Play, New Game, Options and Quit.
-Pause uses Up/Down and A (D) to choose Resume, New Game, Options or Main Menu.
+The app starts on a Croupier-RX main menu with Continue Game, New Game, Load Game,
+Options and Quit. Continue Game restores the dedicated autosave when present.
+Pause uses Up/Down and A (D) to choose Resume, Save Game, Load Game, New Game,
+Options or Main Menu. Save/Load present ten numbered slots showing save
+date/time, move count, elapsed time and mode. Occupied save slots require
+overwrite confirmation; loading over an active game requires confirmation.
 New Game and Main Menu require confirmation, with **No selected initially**;
 arrows toggle No/Yes and A accepts. B or Start backs out of confirmation; at the
 main pause menu B/Start resumes. Gameplay actions are gated while paused. Pause
@@ -70,8 +77,9 @@ During gameplay, Select toggles an optional bottom controls bar. The bar uses th
 same comic-style font and warm cream/yellow treatment as the status HUD, lists
 the active mappings, and is drawn underneath cards so it does not obscure the
 tableau or held stacks. L2+Select performs Undo; while holding cards it reports
-the holding guard instead of mutating rules state.
-Window close or Escape exits. These physical-key defaults match the shared
+the holding guard instead of mutating rules state. Select+Start opens a Quit
+Game confirmation and, on confirmation, writes the autosave before exiting.
+Window close uses the same save-before-exit path. These physical-key defaults match the shared
 devkit desktop input mapping. Its M key (X) and Ctrl+R debug reload have no
 gameplay binding here; New Game still requires confirmation. T/B preview debug
 keys remain confined to the static preview.
@@ -91,10 +99,16 @@ The locked 640×480 Croupier-RX title image and complete card pack are documente
 in `assets/source/ASSET_MANIFEST.json`. Runtime uses deterministic BMP copies
 generated from the pinned PNG assets so SDL can load them without a new image
 decoder dependency. Source-controlled provenance includes the Kennard SVG source
-cards, rasterization script, Permanent Marker Apache-2.0 licence/metadata and the
+cards, approved M0.1F package installer, Permanent Marker Apache-2.0 licence/metadata and the
 complete asset manifest. Menus and gameplay HUD use the bundled genuine
 Permanent Marker Regular font from Google Fonts / Font Diner, with warm
 light-yellow foreground panels.
+M0.1F installs the approved Drive package unchanged: emerald felt background,
+warm-ivory Kennard faces, and the tropical blue/gold card back. M0.1H regenerates
+the approved 25%-index face set with a warmer pale butter-yellow paper tone plus
+subtle upper-left highlight/lower-right shading applied only to the connected
+paper field. Runtime BMPs remain deterministic installs generated from source PNGs.
+The locked title art is unchanged.
 
 The full candidate follows the cursor as an overlay. Its unchanged source remains
 rendered normally; there is no source ghost while holding. The status bar shows
@@ -115,7 +129,10 @@ selectable indexes and focus remain visible. A held run is independently
 positioned to fit entirely below the status bar. This is a minimal desktop
 overflow policy, not final handheld layout polish.
 
-Win is shown in the top bar; Start → New Game remains available.
+The top bar now shows exactly `Klondike`, `Deal: N`, and `Discard: N`, derived
+from the authoritative stock and waste counts after draw, recycle, undo, load and
+new-game transitions. Win still appears in gameplay render state beneath the bar;
+Start → New Game remains available.
 
 ## Undo resource policy
 
@@ -152,6 +169,12 @@ Prefix capture commands with `SDL_VIDEODRIVER=dummy` when no display is present.
 PNG evidence is in `docs/screenshots/`; M0.1C views are in `m01c/`, M0.1D
 views are in `m01d/`, M0.1E desktop-polish validation views are in `m01e/`, and
 the Permanent Marker UI font replacement evidence is in `m01e-permanent-marker/`.
+M0.1F before/after card and table art captures are in `m01f/before/` and
+`m01f/after/`. M0.1G animation/audio evidence is in `m01g/`.
+Optional flags: `--no-anim`, `--no-audio`, `--mute-music`, `--music-volume 0..100`.
+Menu music is the CC BY 4.0 track **Happy Clappy Ukulele** by Shane Ivers,
+converted to a compact 24 kHz mono ADPCM WAV for SDL playback and faded out when
+gameplay begins. Attribution/provenance are recorded in `assets/source/music/`.
 The desktop test writes invalid, pause, confirmation, controls-bar hidden/shown,
 tall, held and win BMP fixtures in its build/test working directory. BMP capture adds no image library;
 the committed PNGs are lossless conversions for review.

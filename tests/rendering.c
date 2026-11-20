@@ -20,9 +20,11 @@ int main(void) {
     for(int stress=0;stress<2;++stress) {
         Scene scene,original; scene_create(&scene,42,stress); original=scene;
         render_scene(r,&scene,&l,back_theme(false),stress); SDL_RenderPresent(r);
-        Uint32 before=*((Uint32 *)((unsigned char *)s->pixels+50*s->pitch)+30);
+        /* Sample center of the stock/top-row card area for the active layout. */
+        int sx = l.margin + l.card_w/2, sy = l.top_y + l.card_h/2;
+        Uint32 before=*((Uint32 *)((unsigned char *)s->pixels+sy*s->pitch)+sx);
         render_scene(r,&scene,&l,back_theme(true),stress); SDL_RenderPresent(r);
-        Uint32 after=*((Uint32 *)((unsigned char *)s->pixels+50*s->pitch)+30); CHECK(before!=after);
+        Uint32 after=*((Uint32 *)((unsigned char *)s->pixels+sy*s->pitch)+sx); CHECK(before!=after);
         CHECK(!memcmp(&scene,&original,sizeof(scene)));
         /* Fixed top status bar; bottom-right remains green table. */
         Uint8 red,green,blue; SDL_GetRGB(*((Uint32 *)((unsigned char *)s->pixels+479*s->pitch)+639),s->format,&red,&green,&blue);

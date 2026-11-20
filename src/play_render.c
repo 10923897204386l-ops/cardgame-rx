@@ -1,11 +1,106 @@
 #include "play_render.h"
+#include "save.h"
+#include <time.h>
+#include "fx.h"
 #include <stdio.h>
 #include <string.h>
 
 static void color(SDL_Renderer *r, SDL_Color c) { SDL_SetRenderDrawColor(r,c.r,c.g,c.b,c.a); }
 static void fill(SDL_Renderer *r, Rect b) { SDL_Rect rect = {b.x,b.y,b.w,b.h}; SDL_RenderFillRect(r,&rect); }
+static void shadow(SDL_Renderer *r, Rect b, int alpha) {
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
+    render_round_fill(r,(Rect){b.x+3,b.y+4,b.w,b.h},8,(SDL_Color){0,0,0,alpha});
+    render_round_fill(r,(Rect){b.x+1,b.y+2,b.w,b.h},8,(SDL_Color){0,0,0,alpha/2});
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
+}
+/* Recessed darker-felt empty pile base: same fabric family, ~15% darker. */
+static void empty_slot(SDL_Renderer *r, Rect b, const char *label) {
+    /* Keep the underlying felt texture visible on device so wells read green, not black. */
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+    render_round_fill(r, b, 10, (SDL_Color){7, 36, 24, 188});
+    render_round_fill(r, (Rect){b.x + 2, b.y + 2, b.w - 4, b.h - 4}, 8, (SDL_Color){12, 54, 36, 140});
+    render_round_fill(r, (Rect){b.x + 1, b.y + 1, b.w - 2, 11}, 8, (SDL_Color){0, 0, 0, 52});
+    render_round_fill(r, (Rect){b.x + 4, b.y + 4, b.w - 8, b.h - 8}, 7, (SDL_Color){0, 0, 0, 22});
+    render_round_fill(r, (Rect){b.x + 5, b.y + b.h - 13, b.w - 10, 7}, 5, (SDL_Color){255, 247, 220, 22});
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+    render_round_outline(r, b, 10, 1, (SDL_Color){18, 70, 48, 255});
+    render_round_outline(r, (Rect){b.x + 1, b.y + 1, b.w - 2, b.h - 2}, 9, 1, (SDL_Color){7, 28, 18, 255});
+    color(r, (SDL_Color){186, 214, 186, 255});
+    if (label) render_text(r, b.x + 8, b.y + 44, label, 1);
+}
 static void outline(SDL_Renderer *r, Rect b, int expand, SDL_Color c) {
     render_round_outline(r,(Rect){b.x-expand,b.y-expand,b.w+2*expand,b.h+2*expand},8,1,c);
+}
+static unsigned fw_hash(unsigned x) {
+    x ^= x << 13; x ^= x >> 17; x ^= x << 5; return x ? x : 0xA5A5u;
+}
+static void firework_burst(SDL_Renderer *r, int cx, int cy, unsigned seed, int age, int life) {
+    if (age < 0 || age >= life) return;
+    static const SDL_Color palette[] = {
+        {255,214,92,255},{255,92,110,255},{110,214,255,255},
+        {170,255,120,255},{255,160,70,255},{220,140,255,255},{255,255,240,255}
+    };
+    int sparks = 18 + (int)(seed % 7u);
+    for (int i = 0; i < sparks; ++i) {
+        unsigned h = fw_hash(seed + (unsigned)i * 97u);
+        int angle = (int)(h % 628u); /* ~0..2pi * 100 */
+        int speed = 18 + (int)((h >> 8) % 34u);
+        /* Approximate cos/sin with cheap quadrant folds for deterministic layout. */
+        int qx = (angle % 314) - 157; /* -157..156 */
+        int qy = 157 - ((angle + 78) % 314);
+        if (angle >= 314) { qx = -qx; qy = -qy; }
+        int x = cx + (qx * speed * age) / (157 * life);
+        int y = cy + (qy * speed * age) / (157 * life) + (age * age) / (life * 3);
+        SDL_Color c = palette[(seed + (unsigned)i) % (unsigned)(sizeof palette / sizeof palette[0])];
+        int fade = 255 - (age * 200) / life;
+        if (fade < 40) fade = 40;
+        c.a = (Uint8)fade;
+        int size = 2 + ((int)(h >> 16) & 1);
+        if (age * 3 > life * 2) size = 1;
+        SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
+        render_round_fill(r,(Rect){x - size, y - size, size * 2 + 1, size * 2 + 1}, size, c);
+        if (age < life / 3)
+            render_round_fill(r,(Rect){x - 1, y - 1, 3, 3},1,(SDL_Color){255,255,255,(Uint8)(fade)});
+        SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
+    }
+}
+static void victory_fireworks(SDL_Renderer *r, uint64_t now) {
+    /* Looping multi-burst display; pure function of now for capture stability. */
+    const int cycle = 2400;
+    int t = (int)(now % (uint64_t)cycle);
+    const struct { int x, y; unsigned seed; int start; int life; } bursts[] = {
+        {120, 110, 0x11u, 0, 900},
+        {320, 90, 0x29u, 180, 950},
+        {520, 120, 0x3Bu, 360, 900},
+        {200, 200, 0x47u, 540, 1000},
+        {440, 180, 0x59u, 720, 1000},
+        {300, 150, 0x61u, 980, 1100},
+        {160, 250, 0x6Du, 1200, 950},
+        {480, 240, 0x73u, 1400, 950},
+        {360, 210, 0x85u, 1650, 1000},
+        {240, 130, 0x97u, 1900, 900},
+    };
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
+    color(r,(SDL_Color){0,0,0,55}); fill(r,(Rect){0,0,640,480});
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
+    for (unsigned i = 0; i < sizeof bursts / sizeof bursts[0]; ++i) {
+        int age = t - bursts[i].start;
+        if (age < 0) age += cycle;
+        if (age >= bursts[i].life) continue;
+        firework_burst(r, bursts[i].x, bursts[i].y, bursts[i].seed + (unsigned)(now / (uint64_t)cycle), age, bursts[i].life);
+    }
+    /* Rising launch trails for the next burst window. */
+    for (unsigned i = 0; i < sizeof bursts / sizeof bursts[0]; ++i) {
+        int lead = bursts[i].start - 120;
+        if (lead < 0) lead += cycle;
+        int age = t - lead;
+        if (age < 0) age += cycle;
+        if (age >= 120) continue;
+        int y = 430 - (age * (430 - bursts[i].y)) / 120;
+        SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
+        render_round_fill(r,(Rect){bursts[i].x - 1, y - 4, 3, 8},1,(SDL_Color){255,230,160,200});
+        SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
+    }
 }
 static void menu_text(SDL_Renderer *r, int center, int y, const char *label, int width, float zoom) {
     color(r,(SDL_Color){43,35,24,255});
@@ -13,29 +108,32 @@ static void menu_text(SDL_Renderer *r, int center, int y, const char *label, int
 }
 static void top_pile_visible(SDL_Renderer *r, const Pile *p, Rect b, const PlayUI *ui,
                              KlondikePile ref, BackTheme theme) {
-    outline(r,b,0,(SDL_Color){119,163,137,255});
     const CardState *top = pile_top(p);
     if (ui->held && ui->source.zone == ref.zone && ui->source.index == ref.index) {
         top = ui->source_start ? &p->cards[ui->source_start - 1] : NULL;
     }
-    if (top) render_card(r,b,top,theme);
-    else {
-        color(r,(SDL_Color){119,163,137,255});
-        render_text(r,b.x+8,b.y+44,ref.zone == K_STOCK ? "STOCK" : ref.zone == K_WASTE ? "WASTE" : "ACE",1);
+    if (top) {
+        outline(r,b,0,(SDL_Color){119,163,137,255});
+        shadow(r,b,46);
+        render_card(r,b,top,theme);
+    } else {
+        empty_slot(r,b,ref.zone == K_STOCK ? "STOCK" : NULL);
     }
 }
 static void menu_panel(SDL_Renderer *r, Rect b) {
     render_round_fill(r,b,12,(SDL_Color){246,229,160,255});
     render_round_outline(r,b,12,3,(SDL_Color){43,35,24,255});
 }
-static void menu_item(SDL_Renderer *r, int y, const char *label, bool selected) {
-    Rect row = {160,y-7,320,31};
+static void menu_item_at(SDL_Renderer *r, Rect panel, int y, const char *label, bool selected) {
+    int pad = 10;
+    Rect row = {panel.x + pad, y - 6, panel.w - pad * 2, 28};
     if (selected) {
-        render_round_fill(r,row,8,(SDL_Color){255,205,78,255});
-        render_round_outline(r,row,8,2,(SDL_Color){43,35,24,255});
+        render_round_fill(r,row,7,(SDL_Color){255,205,78,255});
+        render_round_outline(r,row,7,2,(SDL_Color){43,35,24,255});
     }
     color(r,(SDL_Color){43,35,24,255});
-    if (!render_menu_text(r,320,y-4,label,260,1.0f)) render_text(r,200,y,label,2);
+    if (!render_menu_text(r,panel.x + panel.w / 2,y - 3,label,panel.w - 24,0.64f))
+        render_text(r,panel.x + 18,y,label,1);
 }
 static void hud_text(SDL_Renderer *r, int center, int y, const char *label, int width, float zoom) {
     color(r,(SDL_Color){43,35,24,255});
@@ -78,57 +176,113 @@ static bool dpad_default(const KeyboardMap *keys) {
 static void controls_bar(SDL_Renderer *r, const KeyboardMap *keys) {
     char label[96];
     status_bar(r,(Rect){6,450,628,26});
-    hud_text(r,46,456,dpad_default(keys) ? "ARROWS" : "D-PAD",82,0.46f);
+    hud_text(r,40,456,dpad_default(keys) ? "ARROWS" : "D-PAD",70,0.40f);
     snprintf(label,sizeof(label),"%s PICK",key_name(keys,INPUT_B));
-    hud_text(r,124,456,label,78,0.42f);
-    snprintf(label,sizeof(label),"%s CANCEL",key_name(keys,INPUT_A));
-    hud_text(r,208,456,label,88,0.40f);
+    hud_text(r,108,456,label,70,0.36f);
     snprintf(label,sizeof(label),"%s DRAW",key_name(keys,INPUT_Y));
-    hud_text(r,302,456,label,82,0.40f);
+    hud_text(r,178,456,label,70,0.36f);
     snprintf(label,sizeof(label),"%s ACE",key_name(keys,INPUT_X));
-    hud_text(r,382,456,label,72,0.40f);
+    hud_text(r,244,456,label,60,0.36f);
     snprintf(label,sizeof(label),"%s HELP",key_name(keys,INPUT_SELECT));
-    hud_text(r,462,456,label,74,0.38f);
+    hud_text(r,312,456,label,66,0.34f);
+    snprintf(label,sizeof(label),"%s PAUSE",key_name(keys,INPUT_START));
+    hud_text(r,386,456,label,72,0.34f);
     snprintf(label,sizeof(label),"%s+%s UNDO",key_name(keys,INPUT_L2),key_name(keys,INPUT_SELECT));
-    hud_text(r,560,456,label,132,0.38f);
+    hud_text(r,480,456,label,110,0.32f);
+    snprintf(label,sizeof(label),"%s+%s QUIT",key_name(keys,INPUT_SELECT),key_name(keys,INPUT_START));
+    hud_text(r,590,456,label,100,0.32f);
+}
+static void format_slot_line(char *out, size_t n, unsigned slot) {
+    SaveMeta meta;
+    if (save_probe_slot(slot, &meta) != SAVE_OK) {
+        snprintf(out, n, "%u  Empty", slot + 1);
+        return;
+    }
+    struct tm tm;
+    time_t t = meta.saved_at;
+    localtime_r(&t, &tm);
+    char when[32];
+    strftime(when, sizeof when, "%m-%d %H:%M", &tm);
+    unsigned sec = meta.elapsed_ms / 1000u;
+    snprintf(out, n, "%u  %s  M%u  %um%02u  Draw1",
+             slot + 1, when, meta.move_count, sec / 60u, sec % 60u);
 }
 static void menu_overlay(SDL_Renderer *r, const PlayUI *ui) {
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
     color(r,(SDL_Color){0,0,0,ui->screen == MENU_MAIN ? 40 : 165}); fill(r,(Rect){0,0,640,480});
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
-    if (ui->screen == MENU_CONFIRM_NEW || ui->screen == MENU_CONFIRM_MAIN) {
-        menu_panel(r,(Rect){115,145,410,170});
+    if (ui->screen == MENU_CONFIRM_NEW || ui->screen == MENU_CONFIRM_MAIN ||
+        ui->screen == MENU_CONFIRM_OVERWRITE || ui->screen == MENU_CONFIRM_LOAD ||
+        ui->screen == MENU_CONFIRM_QUIT) {
+        menu_panel(r,(Rect){100,140,440,180});
         color(r,(SDL_Color){43,35,24,255});
-        menu_text(r,320,166,ui->screen == MENU_CONFIRM_MAIN ? "RETURN TO MAIN MENU" : "DISCARD AND DEAL NEW GAME",360,0.9f);
-        menu_text(r,320,226,ui->confirm_yes ? "NO    -YES-" : "-NO-    YES",260,1.0f);
-        render_text(r,190,278,"A SELECT   B BACK",1);
+        const char *title = "CONFIRM";
+        if (ui->screen == MENU_CONFIRM_MAIN) title = "SAVE AND RETURN TO MENU";
+        else if (ui->screen == MENU_CONFIRM_NEW) title = "DISCARD AND DEAL NEW GAME";
+        else if (ui->screen == MENU_CONFIRM_OVERWRITE) title = "OVERWRITE SAVE SLOT";
+        else if (ui->screen == MENU_CONFIRM_LOAD) title = "LOAD AND REPLACE GAME";
+        else if (ui->screen == MENU_CONFIRM_QUIT) title = "QUIT GAME";
+        menu_text(r,320,160,title,400,0.82f);
+        menu_text(r,320,230,ui->confirm_yes ? "NO    -YES-" : "-NO-    YES",260,1.0f);
+    } else if (ui->screen == MENU_SAVE_ERROR || ui->screen == MENU_QUIT_SAVE_ERROR) {
+        menu_panel(r,(Rect){90,120,460,220});
+        color(r,(SDL_Color){43,35,24,255});
+        menu_text(r,320,140,"SAVE FAILED",360,0.9f);
+        menu_text(r,320,178,save_status_text((SaveStatus)ui->save_error),400,0.7f);
+        const char *choices[] = {"RETRY", "CANCEL", "QUIT WITHOUT SAVING"};
+        for (unsigned i = 0; i < 3; ++i)
+            menu_item_at(r, (Rect){90,120,460,220}, 220 + (int)i * 32, choices[i], ui->quit_choice == i);
     } else if (ui->screen == MENU_OPTIONS) {
-        menu_panel(r,(Rect){120,128,400,220});
+        menu_panel(r,(Rect){170,150,300,160});
         color(r,(SDL_Color){43,35,24,255});
-        menu_text(r,320,150,"OPTIONS",260,1.0f);
-        render_text(r,160,215,"No configurable options yet",1);
-        render_text(r,188,296,"A OR B BACK",1);
-    } else {
-        menu_panel(r,ui->screen == MENU_MAIN ? (Rect){126,116,388,264} : (Rect){126,104,388,292});
+        menu_text(r,320,168,"OPTIONS",240,1.0f);
+        menu_text(r,320,220,"No options yet",240,0.8f);
+    } else if (ui->screen == MENU_SAVE_SLOTS || ui->screen == MENU_LOAD_SLOTS) {
+        menu_panel(r,(Rect){70,40,500,400});
         color(r,(SDL_Color){43,35,24,255});
-        menu_text(r,320,132,ui->screen == MENU_MAIN ? "CROUPIER-RX" : "PAUSED",320,1.15f);
-        const char *main_items[] = {"PLAY","NEW GAME","OPTIONS","QUIT"};
-        const char *pause_items[] = {"RESUME","NEW GAME","OPTIONS","MAIN MENU"};
-        const char **items = ui->screen == MENU_MAIN ? main_items : pause_items;
-        int y0 = ui->screen == MENU_MAIN ? 190 : 170;
-        for (unsigned i = 0; i < 4; ++i) menu_item(r,y0+(int)i*42,items[i],ui->menu == i);
+        menu_text(r,320,52, ui->screen == MENU_SAVE_SLOTS ? "SAVE GAME" : "LOAD GAME", 360, 0.8f);
+        for (unsigned i = 0; i < SAVE_MANUAL_SLOTS; ++i) {
+            char line[96];
+            format_slot_line(line, sizeof line, i);
+            menu_item_at(r, (Rect){70,40,500,400}, 88 + (int)i * 32, line, ui->slot == i);
+        }
+    } else if (ui->screen == MENU_MAIN) {
+        Rect panel = {200, 170, 240, 210};
+        menu_panel(r, panel);
+        const char *main_items[] = {"CONTINUE GAME","NEW GAME","LOAD GAME","OPTIONS","QUIT"};
+        int y0 = panel.y + 18;
+        for (unsigned i = 0; i < 5; ++i) {
+            char label[48];
+            if (i == 0 && !ui->continue_available) snprintf(label, sizeof label, "CONTINUE (NONE)");
+            else snprintf(label, sizeof label, "%s", main_items[i]);
+            menu_item_at(r, panel, y0 + (int)i * 36, label, ui->menu == i);
+        }
+    } else if (ui->screen == MENU_PAUSE) {
+        Rect panel = {150, 90, 340, 300};
+        menu_panel(r, panel);
         color(r,(SDL_Color){43,35,24,255});
-        render_text(r,190,ui->screen == MENU_MAIN ? 350 : 394,"A SELECT   B BACK",1);
+        menu_text(r,320,104,"PAUSED",280,0.74f);
+        const char *pause_items[] = {"RESUME","SAVE GAME","LOAD GAME","NEW GAME","OPTIONS","MAIN MENU"};
+        int y0 = 148;
+        for (unsigned i = 0; i < 6; ++i)
+            menu_item_at(r, panel, y0 + (int)i * 36, pause_items[i], ui->menu == i);
     }
 }
 void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
                  const Layout *l, const KeyboardMap *keys, BackTheme theme, uint64_t now) {
+    play_render_fx(r,s,ui,l,keys,theme,now,NULL);
+}
+void play_render_fx(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
+                    const Layout *l, const KeyboardMap *keys, BackTheme theme,
+                    uint64_t now, PlayFX *fx) {
     if (ui->screen == MENU_MAIN) {
         if (!render_title_background(r)) render_table_background(r);
         menu_overlay(r,ui);
+        if (fx) fx_render_over(r,fx,ui,l,s,theme,now);
         return;
     }
     render_table_background(r);
+    if (fx) fx_render_under(r,fx,theme,now);
     if (ui->controls_visible) controls_bar(r,keys);
     top_pile_visible(r,&s->stock,layout_slot(l,0,false),ui,(KlondikePile){K_STOCK,0},theme);
     top_pile_visible(r,&s->waste,layout_slot(l,1,false),ui,(KlondikePile){K_WASTE,0},theme);
@@ -136,12 +290,14 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
         top_pile_visible(r,&s->foundations[f],layout_slot(l,f+3,false),ui,(KlondikePile){K_FOUNDATION,f},theme);
     for (unsigned col = 0; col < 7; ++col) {
         const Pile *p = &s->tableau[col];
-        outline(r,layout_slot(l,col,true),0,(SDL_Color){119,163,137,255});
         size_t visible_count = p->count;
         if (ui->held && ui->source.zone == K_TABLEAU && ui->source.index == col)
             visible_count = ui->source_start;
+        if (!visible_count) empty_slot(r,layout_slot(l,col,true),NULL);
+        else outline(r,layout_slot(l,col,true),0,(SDL_Color){119,163,137,255});
         for (size_t i = 0; i < visible_count; ++i) {
             Rect b = play_card_rect(l,p,col,i);
+            if (i + 1 == visible_count) shadow(r,b,40);
             render_card(r,b,&p->cards[i],theme);
             if (i+1 == visible_count && b.y+b.h > CANVAS_HEIGHT) {
                 /* Visible ellipsis signals cropped pip art; index stays whole. */
@@ -158,37 +314,43 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
         }
     }
     size_t chosen = 0; bool legal = play_preview(ui,s,&chosen);
-    SDL_Color focus_color = legal ? (SDL_Color){111,255,148,255} : (SDL_Color){255,219,90,255};
     Rect focus = play_focus_rect(l,s,ui);
-    render_round_outline(r,(Rect){focus.x-2,focus.y-2,focus.w+4,focus.h+4},10,4,focus_color);
+    if (fx && fx_enabled(fx))
+        fx_draw_selection_glow(r,(Rect){focus.x-2,focus.y-2,focus.w+4,focus.h+4},legal,now);
+    else {
+        SDL_Color focus_color = legal ? (SDL_Color){111,255,148,255} : (SDL_Color){255,219,90,255};
+        render_round_outline(r,(Rect){focus.x-2,focus.y-2,focus.w+4,focus.h+4},10,4,focus_color);
+    }
     if (ui->held) {
         Rect bounds = play_held_bounds(l,s,ui);
         const Pile *p = klondike_pile(s,ui->source);
         size_t count = play_held_count(ui,s);
         for (size_t i = 0; i < count; ++i) {
             Rect b = {bounds.x,bounds.y+(int)i*play_held_overlap(l,count),l->card_w,l->card_h};
+            if (i + 1 == count) shadow(r,b,54);
             render_card(r,b,&p->cards[ui->source_start+i],theme);
         }
         SDL_Color held_color = play_invalid_outline(ui,now) ? (SDL_Color){255,42,54,255} : (SDL_Color){119,218,255,255};
         render_round_outline(r,bounds,10,4,held_color);
     }
-    /* Fixed status strip, always on top of table/carry. */
-    status_bar(r,(Rect){6,2,628,l->status_h-4});
-    char label[96];
-    KlondikePile ref = play_focus(ui);
-    if (ref.zone == K_TABLEAU) snprintf(label,sizeof(label),"TABLEAU %u",ref.index+1);
-    else if (ref.zone == K_FOUNDATION) snprintf(label,sizeof(label),"FOUNDATION %u",ref.index+1);
-    else snprintf(label,sizeof(label),"DRAW %s",ref.zone == K_STOCK ? "STOCK" : "WASTE");
-    hud_text(r,65,5,label,110,0.50f);
-    snprintf(label,sizeof(label),"SEED %u  STOCK %zu",ui->seed,s->stock.count);
-    hud_text(r,87,16,label,150,0.43f);
-    if (ui->held) {
-        size_t n = play_held_count(ui,s);
-        snprintf(label,sizeof(label),"HOLD %zu  PLACE %zu",n,legal ? klondike_pile(s,ui->source)->count-chosen : 0);
-        hud_text(r,230,5,label,150,0.43f);
+    if (klondike_won(s) && ui->screen == MENU_PLAYING) {
+        if (!(fx && fx_enabled(fx))) victory_fireworks(r,now);
+        /* With FX enabled, restrained shimmer/cascade is drawn in fx_render_over. */
     }
-    hud_text(r,405,5,play_message(ui,now),160,0.48f);
-    hud_text(r,552,16,"START PAUSE",120,0.40f);
-    if (klondike_won(s)) hud_text(r,330,16,"YOU WIN - START NEW GAME",220,0.40f);
+    if (fx && ui->held) fx_note_held(fx, play_held_bounds(l,s,ui), now);
+    /* Top status: exactly Klondike, Deal (stock), Discard (waste). */
+    status_bar(r,(Rect){4,2,632,l->status_h-2});
+    char label[96];
+    hud_text(r,90,8,"Klondike",150,0.78f);
+    snprintf(label,sizeof(label),"Deal: %zu", s->stock.count);
+    hud_text(r,300,8,label,180,0.78f);
+    snprintf(label,sizeof(label),"Discard: %zu", s->waste.count);
+    hud_text(r,510,8,label,200,0.78f);
+    if (klondike_won(s) && ui->screen == MENU_PLAYING)
+        hud_text(r,320, l->status_h + 8, "YOU WIN", 200, 0.70f);
     if (ui->screen != MENU_PLAYING) menu_overlay(r,ui);
+    if (fx) {
+        fx_set_victory(fx, klondike_won(s) && ui->screen == MENU_PLAYING, now);
+        fx_render_over(r,fx,ui,l,s,theme,now);
+    }
 }

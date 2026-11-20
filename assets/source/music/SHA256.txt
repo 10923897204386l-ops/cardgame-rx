@@ -1,0 +1,2 @@
+05b6f5529c4f2b2f19895f3d432a61afa182be0363160552201230d9bb5f69e3  assets/source/music/happy-clappy-ukulele.mp3
+abede7cd74699caccb2260ba4a3a6518b2876cdf936deaf9eb59bd2289a56b71  assets/runtime/music/menu_theme.wav

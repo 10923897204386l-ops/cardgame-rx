@@ -1,0 +1,47 @@
+{
+  "description": "M0.1G original deterministic SFX. No third-party samples. Music deferred pending user shortlist approval.",
+  "generator": "inline python in M0.1G implementation (assets/source/sfx)",
+  "runtime_dir": "assets/runtime/sfx",
+  "files": {
+    "deck_tap.wav": {
+      "sha256": "28dac0693a2e8959df6314c64e47fb4188c80749c17053429aa999a03bf64c2c",
+      "license": "Original generated CC0-equivalent project SFX",
+      "source": "assets/source/sfx/deck_tap.wav"
+    },
+    "draw.wav": {
+      "sha256": "1f94763c9954fa997e5e6a0ffad6e8a793530106ee2b046b88acebbefa98351d",
+      "license": "Original generated CC0-equivalent project SFX",
+      "source": "assets/source/sfx/draw.wav"
+    },
+    "invalid.wav": {
+      "sha256": "5e565179c7751c5f30b61c24044446703b37a2fffa6fb98ffcd5d6439ccc3585",
+      "license": "Original generated CC0-equivalent project SFX",
+      "source": "assets/source/sfx/invalid.wav"
+    },
+    "menu.wav": {
+      "sha256": "a1afa8fe4797ed6b13ffc4b3887bdb9590af911be2bc40ed2f30d0e0fba5d8b7",
+      "license": "Original generated CC0-equivalent project SFX",
+      "source": "assets/source/sfx/menu.wav"
+    },
+    "place.wav": {
+      "sha256": "e45b033109a83ee3418a272277a9f25daf55ec7debe0242f6bb7fb5686031f13",
+      "license": "Original generated CC0-equivalent project SFX",
+      "source": "assets/source/sfx/place.wav"
+    },
+    "shuffle_riffle.wav": {
+      "sha256": "198af3d67c9fa8f48b1df51d85d1554bbb12c3cf0706d16491f001e3410bdbf1",
+      "license": "Original generated CC0-equivalent project SFX",
+      "source": "assets/source/sfx/shuffle_riffle.wav"
+    },
+    "win_chime.wav": {
+      "sha256": "74529db32b9276166810f3c11471042f7537aaba897f2fbf7642718eafb42473",
+      "license": "Original generated CC0-equivalent project SFX",
+      "source": "assets/source/sfx/win_chime.wav"
+    }
+  },
+  "notes": [
+    "shuffle_riffle.wav includes riffle bursts ending in soft deck-squaring taps",
+    "deck_tap.wav is also fired as a short trailing cue after shuffle",
+    "Music tracks intentionally not committed until user approves licensed shortlist"
+  ]
+}

@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef CARDGAME_ASSET_DIR
+#define CARDGAME_ASSET_DIR "assets/runtime"
+#endif
 static void usage(void) {
     puts("card-preview [--stress] [--theme blue|wine] [--seed N|random] [--scale 1..4]\n"
          "             [--capture FILE.bmp] [--smoke]\n"
@@ -40,6 +43,7 @@ int main(int argc,char **argv) {
     SDL_Renderer *canvas=surface ? SDL_CreateSoftwareRenderer(surface) : NULL;
     int result=0;
     if(!canvas) { result=1; goto cleanup; }
+    (void)render_assets_open(canvas,CARDGAME_ASSET_DIR);
     Scene scene; Layout layout=layout_default(); bool running=true;
     while(running) {
         scene_create(&scene,seed,stress); render_scene(canvas,&scene,&layout,back_theme(alternate),stress); SDL_RenderPresent(canvas);
@@ -58,6 +62,7 @@ int main(int argc,char **argv) {
     }
 cleanup:
     if(result) fprintf(stderr,"SDL: %s\n",SDL_GetError());
+    render_assets_close();
     if(canvas) SDL_DestroyRenderer(canvas);
     if(surface) SDL_FreeSurface(surface);
     SDL_DestroyRenderer(r); SDL_DestroyWindow(w); SDL_Quit(); return result;

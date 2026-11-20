@@ -16,5 +16,49 @@
     "downloaded_from": "https://raw.githubusercontent.com/google/fonts/main/apache/permanentmarker/PermanentMarker-Regular.ttf",
     "copyright": "Copyright (c) 2010 by Font Diner, Inc. All rights reserved."
   },
-  "runtime_format": "BMP files generated losslessly from pinned PNG assets for SDL_LoadBMP runtime loading"
+  "m01f_art_polish": {
+    "package": "google_drive:cardgame-rx/assets/croupier_m01f_approved_assets.zip",
+    "package_sha256": "a7b08b7d15175301c07af23ed867682529630746473b12611ba741088f78a4ca",
+    "source_dir": "assets/source/m01f",
+    "installer": "assets/source/tools/install_m01f_approved_assets.py",
+    "runtime_felt_sha256": "ab2aa6f4f1fa3a3b295452c784fd949ea8ea3fb255a9d099ecc24932493982c3",
+    "runtime_back_navy_sha256": "af0f63ab34288edcfd84b6044d25c3ead4b86f16a90c0a77a244da0348c94050",
+    "runtime_back_wine_sha256": "d1884645a5aa6ecba323ce71503fb8a87617890906ca7a00f400ceef0daa0c2f",
+    "representative_face_hashes": {
+      "AS.bmp": "2efb540b115d31dae9823c9c902650866043fe1298a58b6a86dab1ce50e9be60",
+      "KH.bmp": "b25602cb5ec165bce60e3d3b84016d983951f49c543e9ce338d4cc23c32f5a3e"
+    },
+    "source_png_hashes": {
+      "backgrounds/felt_approved_640x480.png": "2574ffcce6a13b9abc5342f684214aafb6c592d21476472cb95a94531b2bf9f3",
+      "backs/back_tropical_blue_gold_72x100.png": "4eedc69c5149adee278d4ad17f1ac66f716424ca7ace9448b8faad96b3849732",
+      "faces_72x100/AS.png": "fdf7ec74f08eefac553a1de8a6ad7be9de57a2160fec0fd1ef49bfba233164c7",
+      "faces_72x100/KH.png": "1af99120d19ba849847a515cbbff6b84499be58ffc00b9af3be5f9f7d89d5b1f"
+    },
+    "source": "Approved Drive package: unchanged felt background, warm-ivory Kennard faces (72x100 + 144x200), tropical blue/gold back master/rasters. Runtime BMPs are lossless installs only. Wine alternate back retained from pre-M0.1F runtime.",
+    "face_identity_count": 52,
+    "face_source_resolutions": [
+      "72x100",
+      "144x200"
+    ]
+  },
+  "runtime_format": "BMP files generated losslessly from pinned PNG assets for SDL_LoadBMP runtime loading",
+  "card_fronts_v1_25pct": {
+    "package": "google_drive:cardgame-rx/assets/croupier_card_fronts_v1_25pct.zip",
+    "package_sha256": "7c057287a18c276ac2e99642a80085d8e0b9d71452eb80b5e4267ed9c34caf50",
+    "source_dir": "assets/source/card_fronts_v1_25pct",
+    "runtime_faces_dir": "assets/runtime/faces_72x100",
+    "fallback_faces_dir": "assets/runtime/faces_72x100_prev",
+    "face_count": 52,
+    "note": "Authoritative card fronts with ~25% larger top-left indices. PNGs installed without redraw. Previous runtime faces kept in faces_72x100_prev.",
+    "representative_runtime_bmp_sha256": {
+      "AS.bmp": "c2bb124d0861746fd7e5c15d167e935294d08e3fd6cce84a55e5065d04e32cd2",
+      "KH.bmp": "bebd63fa9ce1c771543c0181d00e27ed741948be0bf7b4505050e06ddc6cda3f",
+      "7H.bmp": "9bad1bc875d8afaf48c786ba1cafb6ce2d5857dc1a2dbe0a9707980ba27d378a",
+      "QC.bmp": "1953f4db0e6671bc9e668ff9797eeb6784bac8c8ea52a40b3005b37583ff1153"
+    },
+    "representative_source_png_sha256": {
+      "faces_72x100/AS.png": "eaac239bc40e1e19ac67085d298300f1253dc2d4ad585d25e758a317048e0b78",
+      "faces_72x100/KH.png": "ab62acad73d383470c3cb987e1268c1a5f3f28cff4ac13342e43accf14be2034"
+    }
+  }
 }

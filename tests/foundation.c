@@ -30,8 +30,9 @@ int main(void) {
     CHECK(!pile_init(&p,NULL,1)); CHECK(!pile_init(&p,cs,53)); CHECK(p.count==2);
     cs[1]=cs[0]; CHECK(!pile_init(&p,cs,2)); cs[1].card.rank=14; CHECK(!pile_init(&p,cs,2));
     Layout l=layout_default(); CHECK(layout_valid(&l)); Rect full,strip;
-    CHECK(layout_card(&l,&p,6,0,&full,&strip)); CHECK(full.x==548 && full.y==164 && full.h==100 && strip.h==12);
-    CHECK(layout_card(&l,&p,6,1,&full,&strip)); CHECK(full.y==176 && strip.h==100); CHECK(full.x+full.w<=640);
+    CHECK(layout_card(&l,&p,6,0,&full,&strip));
+    CHECK(full.x==l.margin+6*(l.card_w+l.column_gap) && full.y==l.tableau_y && full.h==l.card_h && strip.h==l.face_down_overlap);
+    CHECK(layout_card(&l,&p,6,1,&full,&strip)); CHECK(full.y==l.tableau_y+l.face_down_overlap && strip.h==l.card_h); CHECK(full.x+full.w<=640);
     CHECK(!layout_card(&l,&p,7,0,&full,&strip)); CHECK(!layout_card(&l,&p,0,2,&full,&strip));
     l.face_up_overlap=21; CHECK(!layout_valid(&l)); l=layout_default(); l.face_up_overlap=26; CHECK(layout_valid(&l));
     for (int stress=0;stress<2;++stress) {

@@ -1,4 +1,10 @@
 #include "play.h"
+#include <time.h>
+#include "save.h"
+
+static void enter_play(PlayUI *ui);
+static void pause_timer(PlayUI *ui, uint64_t now);
+static void resume_timer(PlayUI *ui, uint64_t now);
 
 static unsigned area_size(PlayArea area) {
     return area == AREA_DRAW ? 2 : area == AREA_TABLEAU ? 7 : 4;
@@ -82,6 +88,46 @@ void play_init(PlayUI *ui, const KlondikeState *s, uint32_t seed) {
     *ui = (PlayUI){.seed = seed, .screen = MENU_MAIN, .paused = true};
     select_default(ui, s);
 }
+void play_set_continue_available(PlayUI *ui, bool available) {
+    if (ui) ui->continue_available = available;
+}
+void play_tick(PlayUI *ui, uint64_t now) {
+    if (!ui || ui->screen != MENU_PLAYING || ui->paused || !ui->run_started_ms) return;
+    if (now >= ui->run_started_ms) {
+        uint64_t delta = now - ui->run_started_ms;
+        if (delta > 0) {
+            if (ui->elapsed_ms > UINT32_MAX - (uint32_t)delta)
+                ui->elapsed_ms = UINT32_MAX;
+            else
+                ui->elapsed_ms += (uint32_t)delta;
+            ui->run_started_ms = now;
+        }
+    }
+}
+void play_fill_meta(const PlayUI *ui, SaveMeta *meta) {
+    if (!ui || !meta) return;
+    *meta = (SaveMeta){
+        .seed = ui->seed,
+        .score = ui->score,
+        .move_count = ui->move_count,
+        .elapsed_ms = ui->elapsed_ms,
+        .mode = SAVE_MODE_KLONDIKE_DRAW1,
+        .saved_at = time(NULL),
+        .has_game = true
+    };
+}
+void play_apply_loaded(PlayUI *ui, const SaveMeta *meta, uint64_t now) {
+    if (!ui || !meta) return;
+    ui->seed = meta->seed;
+    ui->score = meta->score;
+    ui->move_count = meta->move_count;
+    ui->elapsed_ms = meta->elapsed_ms;
+    ui->held = false;
+    ui->invalid_until = 0;
+    ui->dirty = false;
+    enter_play(ui);
+    ui->run_started_ms = now ? now : 1;
+}
 size_t play_selected(const PlayUI *ui, const KlondikeState *s) {
     KlondikePile ref = play_focus(ui);
     const Pile *p = klondike_pile(s, ref);
@@ -127,16 +173,118 @@ static void enter_play(PlayUI *ui) {
     ui->confirming = false;
     ui->confirm_yes = false;
     ui->menu = 0;
+    ui->exit_app = false;
 }
-static PlayEvent deal_new(PlayUI *ui, KlondikeGame *g) {
+static void pause_timer(PlayUI *ui, uint64_t now) {
+    play_tick(ui, now);
+    ui->run_started_ms = 0;
+    ui->paused = true;
+}
+static void resume_timer(PlayUI *ui, uint64_t now) {
+    ui->paused = false;
+    ui->run_started_ms = now ? now : 1;
+}
+static void note_move(PlayUI *ui) {
+    if (ui->move_count < UINT32_MAX) ++ui->move_count;
+    ui->dirty = true;
+    /* Simple Vegas-ish score placeholder: +1 per successful commit. */
+    if (ui->score < UINT32_MAX) ++ui->score;
+}
+static PlayEvent deal_new(PlayUI *ui, KlondikeGame *g, uint64_t now) {
     uint32_t seed = ui->seed + 1;
     klondike_new_game(g, seed);
     play_init(ui, &g->state, seed);
     enter_play(ui);
+    ui->score = 0;
+    ui->move_count = 0;
+    ui->elapsed_ms = 0;
+    ui->dirty = false;
+    resume_timer(ui, now);
     return PLAY_NEW_GAME;
 }
-static PlayEvent menu_action(PlayUI *ui, KlondikeGame *g, InputAction action) {
-    if (action == INPUT_QUIT) { ui->quit = true; return PLAY_QUIT; }
+static unsigned main_item_count(const PlayUI *ui) {
+    /* Continue, New Game, Load Game, Options, Quit */
+    (void)ui;
+    return 5;
+}
+static unsigned pause_item_count(void) {
+    /* Resume, Save, Load, New Game, Options, Main Menu */
+    return 6;
+}
+static PlayEvent request_autosave_main(PlayUI *ui) {
+    ui->exit_app = false;
+    return PLAY_SAVE_NEEDED; /* game.c performs autosave then transitions */
+}
+static PlayEvent request_quit_app(PlayUI *ui) {
+    ui->screen = MENU_CONFIRM_QUIT;
+    ui->confirm_yes = false;
+    ui->exit_app = true;
+    ui->quit_choice = 0;
+    return PLAY_NONE;
+}
+static PlayEvent menu_action(PlayUI *ui, KlondikeGame *g, InputAction action, uint64_t now) {
+    if (action == INPUT_QUIT) {
+        /* Escape still exits, but prefer confirmed path when a game is active. */
+        if (ui->screen == MENU_PLAYING || ui->screen == MENU_PAUSE ||
+            ui->screen == MENU_SAVE_SLOTS || ui->screen == MENU_LOAD_SLOTS) {
+            pause_timer(ui, now);
+            return request_quit_app(ui);
+        }
+        ui->quit = true;
+        return PLAY_QUIT;
+    }
+    if (ui->screen == MENU_CONFIRM_QUIT) {
+        if (action_back(action)) {
+            if (ui->return_screen == MENU_MAIN || ui->screen == MENU_MAIN)
+                ui->screen = MENU_MAIN;
+            else {
+                ui->screen = MENU_PLAYING;
+                resume_timer(ui, now);
+            }
+            /* Prefer return_screen if set while playing. */
+            if (ui->return_screen == MENU_PAUSE) { ui->screen = MENU_PAUSE; ui->paused = true; }
+            else if (ui->return_screen == MENU_PLAYING) { enter_play(ui); resume_timer(ui, now); }
+            else if (ui->return_screen == MENU_MAIN) { ui->screen = MENU_MAIN; ui->paused = true; }
+            return PLAY_NONE;
+        }
+        if (action == INPUT_LEFT || action == INPUT_RIGHT || action == INPUT_UP || action == INPUT_DOWN)
+            ui->confirm_yes = !ui->confirm_yes;
+        if (action == INPUT_A) {
+            if (ui->confirm_yes) {
+                ui->exit_app = true;
+                return PLAY_SAVE_NEEDED; /* autosave then quit app */
+            }
+            if (ui->return_screen == MENU_PAUSE) { ui->screen = MENU_PAUSE; ui->paused = true; }
+            else if (ui->return_screen == MENU_MAIN) { ui->screen = MENU_MAIN; ui->paused = true; }
+            else { enter_play(ui); resume_timer(ui, now); }
+        }
+        return PLAY_NONE;
+    }
+    if (ui->screen == MENU_QUIT_SAVE_ERROR || ui->screen == MENU_SAVE_ERROR) {
+        if (action == INPUT_LEFT || action == INPUT_RIGHT || action == INPUT_UP || action == INPUT_DOWN) {
+            ui->quit_choice = (ui->quit_choice + (action == INPUT_LEFT || action == INPUT_UP ? 2 : 1)) % 3;
+            return PLAY_NONE;
+        }
+        if (action_back(action)) {
+            ui->quit_choice = 1; /* cancel */
+        }
+        if (action == INPUT_A || action_back(action)) {
+            if (ui->quit_choice == 0) return PLAY_SAVE_NEEDED; /* retry */
+            if (ui->quit_choice == 2) {
+                if (ui->exit_app) { ui->quit = true; return PLAY_QUIT; }
+                ui->screen = MENU_MAIN; ui->paused = true; ui->held = false; ui->menu = 0;
+                return PLAY_NONE;
+            }
+            /* cancel */
+            if (ui->exit_app) {
+                enter_play(ui); resume_timer(ui, now);
+            } else {
+                ui->screen = MENU_PAUSE; ui->paused = true;
+            }
+            return PLAY_NONE;
+        }
+        return PLAY_NONE;
+    }
     if (ui->screen == MENU_OPTIONS) {
         if (action_back(action) || action == INPUT_A) {
             ui->screen = ui->return_screen;
@@ -144,59 +292,163 @@ static PlayEvent menu_action(PlayUI *ui, KlondikeGame *g, InputAction action) {
         }
         return PLAY_NONE;
     }
-    if (ui->screen == MENU_CONFIRM_NEW || ui->screen == MENU_CONFIRM_MAIN) {
-        if (action_back(action)) { ui->screen = MENU_PAUSE; ui->confirm_yes = false; return PLAY_NONE; }
+    if (ui->screen == MENU_CONFIRM_NEW || ui->screen == MENU_CONFIRM_MAIN ||
+        ui->screen == MENU_CONFIRM_OVERWRITE || ui->screen == MENU_CONFIRM_LOAD) {
+        if (action_back(action)) {
+            if (ui->screen == MENU_CONFIRM_OVERWRITE) ui->screen = MENU_SAVE_SLOTS;
+            else if (ui->screen == MENU_CONFIRM_LOAD) ui->screen = MENU_LOAD_SLOTS;
+            else ui->screen = MENU_PAUSE;
+            ui->confirm_yes = false;
+            return PLAY_NONE;
+        }
         if (action == INPUT_LEFT || action == INPUT_RIGHT || action == INPUT_UP || action == INPUT_DOWN)
             ui->confirm_yes = !ui->confirm_yes;
         if (action == INPUT_A) {
             if (ui->confirm_yes) {
-                if (ui->screen == MENU_CONFIRM_MAIN) { ui->screen = MENU_MAIN; ui->paused = true; ui->held = false; ui->menu = 0; return PLAY_NONE; }
-                return deal_new(ui,g);
+                if (ui->screen == MENU_CONFIRM_MAIN) {
+                    return request_autosave_main(ui);
+                }
+                if (ui->screen == MENU_CONFIRM_NEW) return deal_new(ui, g, now);
+                if (ui->screen == MENU_CONFIRM_OVERWRITE) {
+                    /* Signal game.c to write selected slot */
+                    return PLAY_SAVE_NEEDED;
+                }
+                if (ui->screen == MENU_CONFIRM_LOAD) {
+                    return PLAY_LOADED; /* game.c loads slot */
+                }
             }
-            ui->screen = MENU_PAUSE;
+            if (ui->screen == MENU_CONFIRM_OVERWRITE) ui->screen = MENU_SAVE_SLOTS;
+            else if (ui->screen == MENU_CONFIRM_LOAD) ui->screen = MENU_LOAD_SLOTS;
+            else ui->screen = MENU_PAUSE;
             ui->confirm_yes = false;
         }
         return PLAY_NONE;
     }
-    unsigned count = ui->screen == MENU_MAIN ? 4 : 4;
+    if (ui->screen == MENU_SAVE_SLOTS || ui->screen == MENU_LOAD_SLOTS) {
+        if (action_back(action)) {
+            ui->screen = ui->return_screen ? ui->return_screen : MENU_PAUSE;
+            ui->menu = 0;
+            return PLAY_NONE;
+        }
+        if (action == INPUT_UP) ui->slot = (ui->slot + SAVE_MANUAL_SLOTS - 1) % SAVE_MANUAL_SLOTS;
+        if (action == INPUT_DOWN) ui->slot = (ui->slot + 1) % SAVE_MANUAL_SLOTS;
+        if (action != INPUT_A) return PLAY_NONE;
+        if (ui->screen == MENU_SAVE_SLOTS) {
+            SaveMeta probe;
+            ui->slot_occupied = (save_probe_slot(ui->slot, &probe) == SAVE_OK);
+            if (ui->slot_occupied) {
+                ui->screen = MENU_CONFIRM_OVERWRITE;
+                ui->confirm_yes = false;
+                return PLAY_NONE;
+            }
+            return PLAY_SAVE_NEEDED; /* empty slot: save immediately */
+        }
+        /* Load */
+        SaveMeta probe;
+        if (save_probe_slot(ui->slot, &probe) != SAVE_OK) return PLAY_NONE;
+        if (ui->return_screen == MENU_PAUSE || ui->screen == MENU_LOAD_SLOTS) {
+            /* Loading over active game from pause: confirm */
+            if (ui->return_screen == MENU_PAUSE) {
+                ui->screen = MENU_CONFIRM_LOAD;
+                ui->confirm_yes = false;
+                return PLAY_NONE;
+            }
+        }
+        return PLAY_LOADED;
+    }
+    unsigned count = ui->screen == MENU_MAIN ? main_item_count(ui) : pause_item_count();
     if (action == INPUT_UP) ui->menu = (ui->menu + count - 1) % count;
     if (action == INPUT_DOWN) ui->menu = (ui->menu + 1) % count;
-    if (ui->screen == MENU_PAUSE && action_back(action)) { enter_play(ui); return PLAY_NONE; }
+    if (ui->screen == MENU_PAUSE && action_back(action)) {
+        enter_play(ui); resume_timer(ui, now); return PLAY_NONE;
+    }
     if (action != INPUT_A) return PLAY_NONE;
     if (ui->screen == MENU_MAIN) {
-        if (ui->menu == 0) enter_play(ui);
-        else if (ui->menu == 1) return deal_new(ui,g);
-        else if (ui->menu == 2) { ui->return_screen = MENU_MAIN; ui->screen = MENU_OPTIONS; }
+        /* 0 Continue, 1 New Game, 2 Load Game, 3 Options, 4 Quit */
+        if (ui->menu == 0) {
+            if (ui->continue_available) return PLAY_LOADED; /* load autosave */
+            return PLAY_NONE;
+        }
+        if (ui->menu == 1) return deal_new(ui, g, now);
+        if (ui->menu == 2) {
+            ui->return_screen = MENU_MAIN;
+            ui->screen = MENU_LOAD_SLOTS;
+            ui->slot = 0;
+            return PLAY_NONE;
+        }
+        if (ui->menu == 3) { ui->return_screen = MENU_MAIN; ui->screen = MENU_OPTIONS; }
         else { ui->quit = true; return PLAY_QUIT; }
     } else if (ui->screen == MENU_PAUSE) {
-        if (ui->menu == 0) enter_play(ui);
-        else if (ui->menu == 1) { ui->screen = MENU_CONFIRM_NEW; ui->confirm_yes = false; }
-        else if (ui->menu == 2) { ui->return_screen = MENU_PAUSE; ui->screen = MENU_OPTIONS; }
+        /* 0 Resume, 1 Save, 2 Load, 3 New Game, 4 Options, 5 Main Menu */
+        if (ui->menu == 0) { enter_play(ui); resume_timer(ui, now); }
+        else if (ui->menu == 1) {
+            ui->return_screen = MENU_PAUSE;
+            ui->screen = MENU_SAVE_SLOTS;
+            ui->slot = 0;
+        } else if (ui->menu == 2) {
+            ui->return_screen = MENU_PAUSE;
+            ui->screen = MENU_LOAD_SLOTS;
+            ui->slot = 0;
+        } else if (ui->menu == 3) { ui->screen = MENU_CONFIRM_NEW; ui->confirm_yes = false; }
+        else if (ui->menu == 4) { ui->return_screen = MENU_PAUSE; ui->screen = MENU_OPTIONS; }
         else { ui->screen = MENU_CONFIRM_MAIN; ui->confirm_yes = false; }
     }
     return PLAY_NONE;
 }
-static PlayEvent pause_action(PlayUI *ui, KlondikeGame *g, InputAction action) {
-    return menu_action(ui,g,action);
+static PlayEvent pause_action(PlayUI *ui, KlondikeGame *g, InputAction action, uint64_t now) {
+    return menu_action(ui, g, action, now);
 }
 PlayEvent play_dispatch(PlayUI *ui, KlondikeGame *g, InputAction action, uint64_t now) {
-    return play_dispatch_chord(ui,g,action,false,now);
+    return play_dispatch_chord(ui, g, action, false, false, false, now);
 }
-PlayEvent play_dispatch_chord(PlayUI *ui, KlondikeGame *g, InputAction action, bool l2_held, uint64_t now) {
+PlayEvent play_dispatch_chord(PlayUI *ui, KlondikeGame *g, InputAction action,
+                              bool l2_held, bool select_held, bool start_held, uint64_t now) {
     if (ui->quit || action >= INPUT_COUNT) return PLAY_NONE;
-    if (action == INPUT_QUIT) { ui->quit = true; return PLAY_QUIT; }
-    if (ui->screen != MENU_PLAYING) return pause_action(ui, g, action);
+    play_tick(ui, now);
+
+    /* Global Select+Start quit chord — highest precedence after dialogs that
+       already own Start/Select. Never fires while L2+Select undo is intended
+       without Start, and never fires inside an open confirmation that uses A/B. */
+    bool chord_ok_screen = ui->screen == MENU_PLAYING || ui->screen == MENU_MAIN ||
+                           ui->screen == MENU_PAUSE;
+    if (chord_ok_screen && !l2_held) {
+        if (action == INPUT_SELECT && start_held) {
+            ui->return_screen = ui->screen;
+            pause_timer(ui, now);
+            return request_quit_app(ui);
+        }
+        if (action == INPUT_START && select_held) {
+            ui->return_screen = ui->screen;
+            pause_timer(ui, now);
+            return request_quit_app(ui);
+        }
+    }
+
+    if (action == INPUT_QUIT) {
+        if (ui->screen == MENU_MAIN) { ui->quit = true; return PLAY_QUIT; }
+        ui->return_screen = ui->screen == MENU_PLAYING ? MENU_PLAYING : ui->screen;
+        pause_timer(ui, now);
+        return request_quit_app(ui);
+    }
+    if (ui->screen != MENU_PLAYING) return pause_action(ui, g, action, now);
     if (action == INPUT_SELECT && l2_held) {
         if (ui->held) return feedback(ui, MSG_HOLDING, PLAY_ERROR, now);
         if (!klondike_undo(g)) return feedback(ui, MSG_NO_UNDO, PLAY_ERROR, now);
         select_default(ui, &g->state);
+        if (ui->move_count) --ui->move_count;
+        ui->dirty = true;
         return feedback(ui, MSG_UNDONE, PLAY_COMMITTED, now);
     }
     if (action == INPUT_SELECT) {
         ui->controls_visible = !ui->controls_visible;
         return PLAY_NONE;
     }
-    if (action == INPUT_START) { ui->paused = true; ui->screen = MENU_PAUSE; ui->menu = 0; return PLAY_NONE; }
+    if (action == INPUT_START) {
+        pause_timer(ui, now);
+        ui->screen = MENU_PAUSE;
+        ui->menu = 0;
+        return PLAY_NONE;
+    }
     if (action == INPUT_L1 || action == INPUT_R1) {
         ui->area = (PlayArea)((ui->area + (action == INPUT_R1 ? 1 : 2)) % AREA_COUNT);
         select_default(ui, &g->state);
@@ -241,6 +493,7 @@ PlayEvent play_dispatch_chord(PlayUI *ui, KlondikeGame *g, InputAction action, b
             if (play_preview(ui, &g->state, &chosen) && klondike_drop(g, ui->source, ui->source_start, focus)) {
                 ui->held = false; ui->invalid_until = 0;
                 select_default(ui, &g->state);
+                note_move(ui);
                 return feedback(ui, MSG_MOVED, PLAY_COMMITTED, now);
             }
             ui->invalid_until = now + PLAY_INVALID_MS;
@@ -259,6 +512,7 @@ PlayEvent play_dispatch_chord(PlayUI *ui, KlondikeGame *g, InputAction action, b
         bool changed = draw ? klondike_draw(g) : klondike_recycle(g);
         if (!changed) return feedback(ui, MSG_NO_MOVE, PLAY_ERROR, now);
         select_default(ui, &g->state);
+        note_move(ui);
         return feedback(ui, draw ? MSG_DRAW : MSG_RECYCLE, PLAY_COMMITTED, now);
     }
     if (action == INPUT_X) {
@@ -267,6 +521,7 @@ PlayEvent play_dispatch_chord(PlayUI *ui, KlondikeGame *g, InputAction action, b
             for (unsigned f = 0; f < 4; ++f)
                 if (klondike_move(g, focus, start, (KlondikePile){K_FOUNDATION, f})) {
                     select_default(ui, &g->state);
+                    note_move(ui);
                     return feedback(ui, MSG_MOVED, PLAY_COMMITTED, now);
                 }
         }

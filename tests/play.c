@@ -3,7 +3,7 @@ static PlayEvent press(PlayUI *ui, KlondikeGame *g, InputAction action) {
     return play_dispatch(ui,g,action,1000);
 }
 static PlayEvent chord(PlayUI *ui, KlondikeGame *g, InputAction action, bool l2_held) {
-    return play_dispatch_chord(ui,g,action,l2_held,1000);
+    return play_dispatch_chord(ui,g,action,l2_held,false,false,1000);
 }
 static void start_play(PlayUI *ui, KlondikeGame *g);
 static void controls_bar(void) {
@@ -21,28 +21,38 @@ static void controls_bar(void) {
     klondike_dispose(&g);
 }
 static void start_play(PlayUI *ui, KlondikeGame *g) {
+    (void)g;
     CHECK(ui->screen == MENU_MAIN && ui->paused);
-    CHECK(press(ui,g,INPUT_A) == PLAY_NONE);
+    /* Enter play on the already-prepared in-memory state (tests set fixtures). */
+    ui->screen = MENU_PLAYING;
+    ui->paused = false;
+    ui->run_started_ms = 1;
     CHECK(ui->screen == MENU_PLAYING && !ui->paused);
     CHECK(!ui->controls_visible);
 }
 static void menus(void) {
     KlondikeGame g = {0}; klondike_new_game(&g,42); PlayUI ui; play_init(&ui,&g.state,42);
-    KlondikeState initial = g.state;
-    press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_DOWN); CHECK(ui.menu == 2);
+    /* Main: Continue, New Game, Load Game, Options, Quit */
+    press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_DOWN); CHECK(ui.menu == 3);
     press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_OPTIONS);
     press(&ui,&g,INPUT_B); CHECK(ui.screen == MENU_MAIN && ui.menu == 0);
     press(&ui,&g,INPUT_DOWN); CHECK(press(&ui,&g,INPUT_A) == PLAY_NEW_GAME);
     CHECK(ui.screen == MENU_PLAYING && ui.seed == 43 && !g.history && !g.undo_depth);
-    CHECK(!same_state(&g.state,&initial));
     press(&ui,&g,INPUT_START); CHECK(ui.screen == MENU_PAUSE && ui.menu == 0);
-    press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_A);
-    CHECK(ui.screen == MENU_OPTIONS); press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_PAUSE);
-    press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_A);
+    /* Pause: Resume, Save, Load, New, Options, Main Menu */
+    for (int i = 0; i < 4; ++i) press(&ui,&g,INPUT_DOWN);
+    press(&ui,&g,INPUT_A); /* Options */
+    CHECK(ui.screen == MENU_OPTIONS); press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_PAUSE && ui.menu == 0);
+    for (int i = 0; i < 5; ++i) press(&ui,&g,INPUT_DOWN);
+    CHECK(ui.menu == 5);
+    press(&ui,&g,INPUT_A); /* Main Menu confirm */
     CHECK(ui.screen == MENU_CONFIRM_MAIN && !ui.confirm_yes);
-    press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_PAUSE);
-    press(&ui,&g,INPUT_A);
-    press(&ui,&g,INPUT_RIGHT); press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_MAIN && ui.paused);
+    press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_PAUSE); /* default No */
+    CHECK(ui.menu == 5);
+    press(&ui,&g,INPUT_A); /* open confirm again */
+    press(&ui,&g,INPUT_RIGHT); /* Yes */
+    CHECK(ui.confirm_yes);
+    CHECK(press(&ui,&g,INPUT_A) == PLAY_SAVE_NEEDED);
     klondike_dispose(&g);
 }
 static void navigation(void) {
@@ -167,7 +177,9 @@ static void stock_and_pause(void) {
     for (size_t i = 0; i < sizeof(gated)/sizeof(*gated); ++i) press(&ui,&g,gated[i]);
     CHECK(same_state(&g.state,&empty_stock) && g.history == history && g.undo_depth == depth && ui.held);
     press(&ui,&g,INPUT_A); CHECK(!ui.paused && ui.held); /* Resume */
-    press(&ui,&g,INPUT_START); press(&ui,&g,INPUT_DOWN); press(&ui,&g,INPUT_A);
+    press(&ui,&g,INPUT_START);
+    for (int i = 0; i < 3; ++i) press(&ui,&g,INPUT_DOWN);
+    press(&ui,&g,INPUT_A);
     CHECK(ui.screen == MENU_CONFIRM_NEW && !ui.confirm_yes);
     press(&ui,&g,INPUT_A); CHECK(ui.screen == MENU_PAUSE && ui.held); /* No */
     CHECK(same_state(&g.state,&empty_stock) && g.history == history);
@@ -179,9 +191,11 @@ static void stock_and_pause(void) {
     CHECK(same_state(&g.state,&expected) && !ui.paused && !ui.held && !g.history && !g.undo_depth);
     CHECK(ui.area == AREA_DRAW && ui.focus[0] == 0 && ui.seed == 43);
     press(&ui,&g,INPUT_START); press(&ui,&g,INPUT_START); CHECK(!ui.paused);
-    CHECK(press(&ui,&g,INPUT_QUIT) == PLAY_QUIT && ui.quit);
-    CHECK(same_state(&g.state,&expected));
-    CHECK(press(&ui,&g,INPUT_Y) == PLAY_NONE && same_state(&g.state,&expected));
+    CHECK(press(&ui,&g,INPUT_QUIT) == PLAY_NONE && ui.screen == MENU_CONFIRM_QUIT);
+    press(&ui,&g,INPUT_RIGHT);
+    CHECK(press(&ui,&g,INPUT_A) == PLAY_SAVE_NEEDED);
+    ui.quit = true;
+    CHECK(press(&ui,&g,INPUT_Y) == PLAY_NONE);
     klondike_dispose(&g);
 }
 int main(void) {

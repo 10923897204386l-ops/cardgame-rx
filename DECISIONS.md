@@ -114,3 +114,27 @@
   normally while the transient held overlay follows the destination cursor.
 - Make focus/held outlines thicker with rounded corners, and draw card faces and
   backs with rounded corners. Preserve the 640×480 SDL software-rendered path.
+
+## 2026-11-20 — M0.1H save/resume, quit and asset-pipeline choices
+- Persist Klondike sessions in a dedicated `save` module with versioned binary
+  files, CRC validation and atomic temp-write + rename. Save payloads include
+  full pile/face state, score/timer/move metadata, seed and bounded undo
+  snapshots so Continue/Load can restore an in-progress game without replaying
+  UI actions.
+- Use an autosave plus ten manual slots in the user-writable XDG app-data tree
+  instead of storing saves beside the executable or in the repository. Surface
+  slot metadata (timestamp, mode, move count, elapsed time) before load/overwrite.
+- Route all confirmed “leave gameplay” paths through the same autosave-aware
+  flow: Main Menu confirmation, window-close exit and the new Select+Start quit
+  chord must save or present an explicit failure dialog before discarding play.
+- Simplify the gameplay HUD to the spec-required `Klondike / Deal / Discard`
+  bar and keep move/score/timer data in save-slot metadata rather than on the
+  always-visible play surface.
+- Treat the approved 25%-index deck as immutable source art under
+  `assets/source/card_fronts_v1_25pct/original/`; regenerate lit PNG/BMP runtime
+  assets with a deterministic script that masks only the paper field so faces,
+  pips and indices are unchanged.
+- Keep menu music as a source MP3 plus a compact derived SDL runtime WAV, with
+  attribution and hashes committed beside the source. Use a lightweight software
+  mixer so looping menu music and overlapping SFX can coexist without adding a
+  new external audio dependency.
