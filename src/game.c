@@ -3,6 +3,7 @@
 #include "play_view.h"
 #include "audio.h"
 #include "fx.h"
+#include "rx_input.h"
 #include "sdl_compat.h"
 #include <errno.h>
 #include <stdio.h>
@@ -21,8 +22,8 @@ static void usage(void) {
          "         [--no-anim] [--no-audio]\n"
          "Devkit keys: arrows navigate, S=B, D=A/cancel, W=X/foundation, A=Y/stock,\n"
          "Left Shift/Space=L1/R1, Left Ctrl/Left Alt=L2/R2, E=Start, Q=Select, Escape=Quit.\n"
-         "Pause: Up/Down and A choose, B backs out. New game requires confirmation.\n"
-         "Static/stress preview remains a separate executable: card-preview.");
+         "RG35XXSP: ANBERNIC-keys joystick (D-pad hat, A/B/X/Y/L/R/Start/Select).\n"
+         "Pause: Up/Down and A choose, B backs out. New game requires confirmation.");
 }
 
 static Rect pile_rect(const Layout *l, KlondikePile ref) {
@@ -111,31 +112,60 @@ int main(int argc, char **argv) {
         } else { usage(); return 2; }
     }
     if (!keyboard_valid(&keys)) { fputs("Key bindings must be unique\n", stderr); return 2; }
-    printf("Klondike seed %u; temporary court art; desktop keyboard controls only\n", seed);
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) { fprintf(stderr, "SDL: %s\n", SDL_GetError()); return 1; }
+    printf("Klondike seed %u\n", seed);
+    fflush(stdout);
+
+    /* Joystick required on RG35XXSP; audio optional. */
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_AUDIO) != 0) {
+        fprintf(stderr, "SDL: %s\n", SDL_GetError());
+        return 1;
+    }
+    SDL_JoystickEventState(SDL_ENABLE);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-    SDL_Window *window = SDL_CreateWindow("Cardgame-RX Klondike", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          640 * scale, 480 * scale, 0);
-    SDL_Renderer *screen = window ? SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE) : NULL;
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+
+    Uint32 win_flags = SDL_WINDOW_SHOWN;
+#if defined(__linux__)
+    /* Handheld ports run fullscreen under mali. */
+    if (getenv("SDL_VIDEODRIVER") && !strcmp(getenv("SDL_VIDEODRIVER"), "mali"))
+        win_flags |= SDL_WINDOW_FULLSCREEN;
+#endif
+    SDL_Window *window = SDL_CreateWindow("Croupier-RX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                          640 * scale, 480 * scale, win_flags);
+    /* Prefer accelerated+vsync on device; fall back to software. */
+    SDL_Renderer *screen = window ? SDL_CreateRenderer(window, -1,
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC) : NULL;
+    if (window && !screen)
+        screen = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
     SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0, 640, 480, 32, SDL_PIXELFORMAT_ARGB8888);
     SDL_Renderer *canvas = surface ? SDL_CreateSoftwareRenderer(surface) : NULL;
-    SDL_Texture *texture = screen ? SDL_CreateTexture(screen, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 640, 480) : NULL;
+    SDL_Texture *texture = screen ? SDL_CreateTexture(screen, SDL_PIXELFORMAT_ARGB8888,
+                                                     SDL_TEXTUREACCESS_STREAMING, 640, 480) : NULL;
     int result = 0;
     KlondikeGame game = {0}; klondike_set_undo_limit(&game, undo_limit); klondike_new_game(&game, seed);
     PlayUI ui; play_init(&ui, &game.state, seed); Layout layout = layout_default();
     PlayFX fx; fx_init(&fx, anim);
+    RxInput rx; rx_input_init(&rx);
+    fprintf(stderr, "input: joysticks=%d pad=%s\n", SDL_NumJoysticks(),
+            rx.pad ? SDL_JoystickName(rx.pad) : "(none)");
+    fflush(stderr);
     bool announced_win = false;
     if (!window || !screen || !surface || !canvas || !texture) { result = 1; goto cleanup; }
+    if (SDL_RenderSetLogicalSize(screen, 640, 480) != 0)
+        fprintf(stderr, "logical size: %s\n", SDL_GetError());
     (void)render_assets_open(canvas, CARDGAME_ASSET_DIR);
     (void)render_menu_font_open(canvas, CARDGAME_FONT_PATH);
     char sfx_dir[512];
     snprintf(sfx_dir, sizeof(sfx_dir), "%s/sfx", CARDGAME_ASSET_DIR);
-    if (sound) (void)audio_open(sfx_dir);
-    else audio_set_enabled(false);
+    if (sound) {
+        if (!audio_open(sfx_dir))
+            fprintf(stderr, "audio: unavailable (%s)\n", SDL_GetError());
+    } else audio_set_enabled(false);
 
-    /* Approved shuffle/riffle with soft deck-squaring tap before play. */
-    if (sound) { audio_play(SFX_SHUFFLE); audio_play(SFX_DECK_TAP); }
+    if (sound && audio_enabled()) { audio_play(SFX_SHUFFLE); audio_play(SFX_DECK_TAP); }
     deal_intro_fx(&fx, &game.state, &layout, SDL_GetTicks64());
+    fprintf(stderr, "loop: enter main menu\n");
+    fflush(stderr);
 
     while (!ui.quit) {
         SDL_Event event;
@@ -143,15 +173,17 @@ int main(int argc, char **argv) {
         while (SDL_PollEvent(&event)) {
             PlayScreen before = ui.screen;
             KlondikePile focus_before = play_focus(&ui);
-            PlayEvent pe = desktop_event(&ui, &game, &keys, &event, now);
-            handle_play_event(pe, &ui, &game, &fx, &layout, sound, now, before, focus_before);
+            PlayEvent pe = desktop_event_rx(&ui, &game, &keys, &rx, &event, now);
+            handle_play_event(pe, &ui, &game, &fx, &layout, sound && audio_enabled(), now, before, focus_before);
             if (pe == PLAY_NEW_GAME) announced_win = false;
+            if (pe != PLAY_NONE)
+                fprintf(stderr, "event pe=%d screen=%d\n", (int)pe, (int)ui.screen);
         }
         if (ui.quit) break;
         now = SDL_GetTicks64();
         if (klondike_won(&game.state) && ui.screen == MENU_PLAYING && !announced_win) {
             announced_win = true;
-            if (sound) audio_play(SFX_WIN);
+            if (sound && audio_enabled()) audio_play(SFX_WIN);
         }
         if (!klondike_won(&game.state)) announced_win = false;
         fx_update(&fx, now);
@@ -164,18 +196,15 @@ int main(int argc, char **argv) {
         }
         SDL_RenderPresent(screen);
         if (smoke) break;
-        if (SDL_WaitEventTimeout(&event, 16)) {
-            PlayScreen before = ui.screen;
-            KlondikePile focus_before = play_focus(&ui);
-            now = SDL_GetTicks64();
-            PlayEvent pe = desktop_event(&ui, &game, &keys, &event, now);
-            handle_play_event(pe, &ui, &game, &fx, &layout, sound, now, before, focus_before);
-            if (pe == PLAY_NEW_GAME) announced_win = false;
-        }
+        /* Cap spin if driver ignores vsync (observed high CPU freeze on RX). */
+        SDL_Delay(8);
     }
 cleanup:
     if (result) fprintf(stderr, "SDL: %s\n", SDL_GetError());
+    fprintf(stderr, "exit result=%d\n", result);
+    fflush(stderr);
     klondike_dispose(&game);
+    rx_input_close(&rx);
     audio_close();
     render_assets_close();
     if (texture) SDL_DestroyTexture(texture);

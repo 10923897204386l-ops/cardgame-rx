@@ -10,8 +10,8 @@ libs=$(sdl2-config --libs)
 asset_dir=${CARDGAME_ASSET_DIR:-assets/runtime}
 font_path=${CARDGAME_FONT_PATH:-assets/fonts/PermanentMarker-Regular.ttf}
 gcc -std=c17 -O2 -Wall -Wextra -Werror \
-    -DCARDGAME_ASSET_DIR=\"$asset_dir\" \
-    -DCARDGAME_FONT_PATH=\"$font_path\" \
+    -DCARDGAME_ASSET_DIR=\"${asset_dir}\" \
+    -DCARDGAME_FONT_PATH=\"${font_path}\" \
     $cflags -Isrc \
     src/model.c src/layout.c src/scene.c src/klondike.c \
     src/play.c src/play_view.c src/play_render.c \

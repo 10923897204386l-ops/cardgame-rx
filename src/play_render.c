@@ -120,14 +120,16 @@ static void menu_panel(SDL_Renderer *r, Rect b) {
     render_round_fill(r,b,12,(SDL_Color){246,229,160,255});
     render_round_outline(r,b,12,3,(SDL_Color){43,35,24,255});
 }
-static void menu_item(SDL_Renderer *r, int y, const char *label, bool selected) {
-    Rect row = {160,y-7,320,31};
+static void menu_item_at(SDL_Renderer *r, Rect panel, int y, const char *label, bool selected) {
+    int pad = 10;
+    Rect row = {panel.x + pad, y - 6, panel.w - pad * 2, 28};
     if (selected) {
-        render_round_fill(r,row,8,(SDL_Color){255,205,78,255});
-        render_round_outline(r,row,8,2,(SDL_Color){43,35,24,255});
+        render_round_fill(r,row,7,(SDL_Color){255,205,78,255});
+        render_round_outline(r,row,7,2,(SDL_Color){43,35,24,255});
     }
     color(r,(SDL_Color){43,35,24,255});
-    if (!render_menu_text(r,320,y-4,label,260,1.0f)) render_text(r,200,y,label,2);
+    if (!render_menu_text(r,panel.x + panel.w / 2,y - 3,label,panel.w - 24,0.92f))
+        render_text(r,panel.x + 18,y,label,2);
 }
 static void hud_text(SDL_Renderer *r, int center, int y, const char *label, int width, float zoom) {
     color(r,(SDL_Color){43,35,24,255});
@@ -193,24 +195,28 @@ static void menu_overlay(SDL_Renderer *r, const PlayUI *ui) {
         color(r,(SDL_Color){43,35,24,255});
         menu_text(r,320,166,ui->screen == MENU_CONFIRM_MAIN ? "RETURN TO MAIN MENU" : "DISCARD AND DEAL NEW GAME",360,0.9f);
         menu_text(r,320,226,ui->confirm_yes ? "NO    -YES-" : "-NO-    YES",260,1.0f);
-        render_text(r,190,278,"A SELECT   B BACK",1);
     } else if (ui->screen == MENU_OPTIONS) {
-        menu_panel(r,(Rect){120,128,400,220});
+        menu_panel(r,(Rect){170,150,300,160});
         color(r,(SDL_Color){43,35,24,255});
-        menu_text(r,320,150,"OPTIONS",260,1.0f);
-        render_text(r,160,215,"No configurable options yet",1);
-        render_text(r,188,296,"A OR B BACK",1);
-    } else {
-        menu_panel(r,ui->screen == MENU_MAIN ? (Rect){126,116,388,264} : (Rect){126,104,388,292});
-        color(r,(SDL_Color){43,35,24,255});
-        menu_text(r,320,132,ui->screen == MENU_MAIN ? "CROUPIER-RX" : "PAUSED",320,1.15f);
+        menu_text(r,320,168,"OPTIONS",240,1.0f);
+        menu_text(r,320,220,"No options yet",240,0.8f);
+    } else if (ui->screen == MENU_MAIN) {
+        /* Compact panel over title art: no duplicate title, no bitmap key hints. */
+        Rect panel = {210, 188, 220, 168};
+        menu_panel(r, panel);
         const char *main_items[] = {"PLAY","NEW GAME","OPTIONS","QUIT"};
-        const char *pause_items[] = {"RESUME","NEW GAME","OPTIONS","MAIN MENU"};
-        const char **items = ui->screen == MENU_MAIN ? main_items : pause_items;
-        int y0 = ui->screen == MENU_MAIN ? 190 : 170;
-        for (unsigned i = 0; i < 4; ++i) menu_item(r,y0+(int)i*42,items[i],ui->menu == i);
+        int y0 = panel.y + 22;
+        for (unsigned i = 0; i < 4; ++i)
+            menu_item_at(r, panel, y0 + (int)i * 36, main_items[i], ui->menu == i);
+    } else {
+        Rect panel = {150, 112, 340, 250};
+        menu_panel(r, panel);
         color(r,(SDL_Color){43,35,24,255});
-        render_text(r,190,ui->screen == MENU_MAIN ? 350 : 394,"A SELECT   B BACK",1);
+        menu_text(r,320,128,"PAUSED",280,1.05f);
+        const char *pause_items[] = {"RESUME","NEW GAME","OPTIONS","MAIN MENU"};
+        int y0 = 168;
+        for (unsigned i = 0; i < 4; ++i)
+            menu_item_at(r, panel, y0 + (int)i * 40, pause_items[i], ui->menu == i);
     }
 }
 void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
