@@ -33,6 +33,14 @@ static void start_play(PlayUI *ui, KlondikeGame *game, KeyboardMap *keys) {
     key(ui,game,keys,SDL_SCANCODE_D,1);
     CHECK(ui->screen == MENU_PLAYING);
 }
+static void ui_font_smoke(void) {
+    SDL_SetRenderDrawColor(renderer,0,0,0,255);
+    SDL_RenderClear(renderer);
+    CHECK(render_menu_text(renderer,320,180,"PERMANENT MARKER UI 0123456789",600,1.0f));
+    CHECK(render_menu_text(renderer,320,220,"ARROWS S D A W Q LCTRL+Q F1 F2",600,0.9f));
+    SDL_RenderPresent(renderer);
+    CHECK(pixel_sum((Rect){60,170,520,90}) != 0);
+}
 static void mappings(void) {
     KeyboardMap keys = keyboard_default(); CHECK(keyboard_valid(&keys));
     const SDL_Scancode devkit[INPUT_COUNT] = {
@@ -198,9 +206,10 @@ int main(void) {
     CHECK(surface); renderer = SDL_CreateSoftwareRenderer(surface); CHECK(renderer); layout = layout_default();
     CHECK(render_assets_open(renderer,CARDGAME_ASSET_DIR));
 #ifdef CARDGAME_FONT_PATH
+    CHECK(!render_menu_font_open(renderer,"/tmp/cardgame-rx-missing-font.ttf"));
     CHECK(render_menu_font_open(renderer,CARDGAME_FONT_PATH));
 #endif
-    mappings(); carry_and_flash(); tall_columns(); sdl_key_playthrough(); winning();
+    ui_font_smoke(); mappings(); carry_and_flash(); tall_columns(); sdl_key_playthrough(); winning();
     render_assets_close();
     SDL_DestroyRenderer(renderer); SDL_FreeSurface(surface);
     puts("desktop: configurable keys, full held overlay without source ghost, invalid outline pixels, tall indexes and SDL keyboard playthrough passed");

@@ -8,7 +8,7 @@
 #define CARDGAME_ASSET_DIR "assets/runtime"
 #endif
 #ifndef CARDGAME_FONT_PATH
-#define CARDGAME_FONT_PATH "assets/fonts/GoRXInk.ttf"
+#define CARDGAME_FONT_PATH "assets/fonts/PermanentMarker-Regular.ttf"
 #endif
 
 static void usage(void) {

@@ -91,9 +91,10 @@ The locked 640×480 Croupier-RX title image and complete card pack are documente
 in `assets/source/ASSET_MANIFEST.json`. Runtime uses deterministic BMP copies
 generated from the pinned PNG assets so SDL can load them without a new image
 decoder dependency. Source-controlled provenance includes the Kennard SVG source
-cards, rasterization script, Yusei Magic/Go RX Ink OFL text and the complete asset
-manifest. Menus use the bundled Go RX Ink font derived from Yusei Magic, matching
-the inspected Go-RX convention, with warm light-yellow foreground panels.
+cards, rasterization script, Permanent Marker Apache-2.0 licence/metadata and the
+complete asset manifest. Menus and gameplay HUD use the bundled genuine
+Permanent Marker Regular font from Google Fonts / Font Diner, with warm
+light-yellow foreground panels.
 
 The full candidate follows the cursor as an overlay. Its unchanged source remains
 rendered normally; there is no source ghost while holding. The status bar shows
@@ -149,7 +150,8 @@ of window scale, and `--smoke` to present one window frame then exit:
 
 Prefix capture commands with `SDL_VIDEODRIVER=dummy` when no display is present.
 PNG evidence is in `docs/screenshots/`; M0.1C views are in `m01c/`, M0.1D
-views are in `m01d/` and M0.1E desktop-polish validation views are in `m01e/`.
+views are in `m01d/`, M0.1E desktop-polish validation views are in `m01e/`, and
+the Permanent Marker UI font replacement evidence is in `m01e-permanent-marker/`.
 The desktop test writes invalid, pause, confirmation, controls-bar hidden/shown,
 tall, held and win BMP fixtures in its build/test working directory. BMP capture adds no image library;
 the committed PNGs are lossless conversions for review.

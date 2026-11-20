@@ -78,19 +78,19 @@ static bool dpad_default(const KeyboardMap *keys) {
 static void controls_bar(SDL_Renderer *r, const KeyboardMap *keys) {
     char label[96];
     status_bar(r,(Rect){6,450,628,26});
-    hud_text(r,46,457,dpad_default(keys) ? "ARROWS" : "D-PAD",82,0.40f);
+    hud_text(r,46,456,dpad_default(keys) ? "ARROWS" : "D-PAD",82,0.46f);
     snprintf(label,sizeof(label),"%s PICK",key_name(keys,INPUT_B));
-    hud_text(r,124,457,label,78,0.38f);
+    hud_text(r,124,456,label,78,0.42f);
     snprintf(label,sizeof(label),"%s CANCEL",key_name(keys,INPUT_A));
-    hud_text(r,208,457,label,88,0.36f);
+    hud_text(r,208,456,label,88,0.40f);
     snprintf(label,sizeof(label),"%s DRAW",key_name(keys,INPUT_Y));
-    hud_text(r,302,457,label,82,0.36f);
+    hud_text(r,302,456,label,82,0.40f);
     snprintf(label,sizeof(label),"%s ACE",key_name(keys,INPUT_X));
-    hud_text(r,382,457,label,72,0.36f);
+    hud_text(r,382,456,label,72,0.40f);
     snprintf(label,sizeof(label),"%s HELP",key_name(keys,INPUT_SELECT));
-    hud_text(r,462,457,label,74,0.34f);
+    hud_text(r,462,456,label,74,0.38f);
     snprintf(label,sizeof(label),"%s+%s UNDO",key_name(keys,INPUT_L2),key_name(keys,INPUT_SELECT));
-    hud_text(r,560,457,label,132,0.34f);
+    hud_text(r,560,456,label,132,0.38f);
 }
 static void menu_overlay(SDL_Renderer *r, const PlayUI *ui) {
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
@@ -179,16 +179,16 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
     if (ref.zone == K_TABLEAU) snprintf(label,sizeof(label),"TABLEAU %u",ref.index+1);
     else if (ref.zone == K_FOUNDATION) snprintf(label,sizeof(label),"FOUNDATION %u",ref.index+1);
     else snprintf(label,sizeof(label),"DRAW %s",ref.zone == K_STOCK ? "STOCK" : "WASTE");
-    hud_text(r,65,6,label,110,0.42f);
+    hud_text(r,65,5,label,110,0.50f);
     snprintf(label,sizeof(label),"SEED %u  STOCK %zu",ui->seed,s->stock.count);
-    hud_text(r,87,17,label,150,0.38f);
+    hud_text(r,87,16,label,150,0.43f);
     if (ui->held) {
         size_t n = play_held_count(ui,s);
         snprintf(label,sizeof(label),"HOLD %zu  PLACE %zu",n,legal ? klondike_pile(s,ui->source)->count-chosen : 0);
-        hud_text(r,230,6,label,150,0.38f);
+        hud_text(r,230,5,label,150,0.43f);
     }
-    hud_text(r,405,6,play_message(ui,now),160,0.42f);
-    hud_text(r,552,17,"START PAUSE",120,0.36f);
-    if (klondike_won(s)) hud_text(r,330,17,"YOU WIN - START NEW GAME",220,0.36f);
+    hud_text(r,405,5,play_message(ui,now),160,0.48f);
+    hud_text(r,552,16,"START PAUSE",120,0.40f);
+    if (klondike_won(s)) hud_text(r,330,16,"YOU WIN - START NEW GAME",220,0.40f);
     if (ui->screen != MENU_PLAYING) menu_overlay(r,ui);
 }

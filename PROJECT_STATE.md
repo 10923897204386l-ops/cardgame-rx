@@ -29,6 +29,10 @@ Updated: 2026-11-20.
 - M0.1E is implemented on `feat/m0-1e-desktop-polish`: controls bar now reflects
   active key bindings, desktop/rules-only/clean-clone validation passes, and
   release-candidate screenshots are in `docs/screenshots/m01e/`.
+- The approved Permanent Marker interface font replacement is implemented on the
+  same M0.1E branch: genuine Google Fonts / Font Diner TTF, Apache-2.0 licence
+  and metadata are bundled, Go RX Ink is removed, and evidence screenshots are in
+  `docs/screenshots/m01e-permanent-marker/`.
 - No RG35XXSP hardware testing, device mapping or packaging has been performed.
 
 ## Goal
