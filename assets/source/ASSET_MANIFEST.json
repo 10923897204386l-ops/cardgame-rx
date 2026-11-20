@@ -17,17 +17,29 @@
     "copyright": "Copyright (c) 2010 by Font Diner, Inc. All rights reserved."
   },
   "m01f_art_polish": {
-    "generator": "assets/source/tools/generate_m01f_art.py",
+    "package": "google_drive:cardgame-rx/assets/croupier_m01f_approved_assets.zip",
+    "package_sha256": "a7b08b7d15175301c07af23ed867682529630746473b12611ba741088f78a4ca",
     "source_dir": "assets/source/m01f",
-    "runtime_felt_sha256": "0ce30bfef0e7126a1e6f2c600bee299de723c842b7d856636c37b9b77cb64da2",
-    "runtime_back_navy_sha256": "5ccf10c20b4dc207650f6841b282b3965ca13ab40f3525baf97964272729d51e",
-    "runtime_back_wine_sha256": "a575f9c11a5d27d3f511b46cf92a6b4cc55181df8c73af645b6fdca5c4ed0e2b",
+    "installer": "assets/source/tools/install_m01f_approved_assets.py",
+    "runtime_felt_sha256": "ab2aa6f4f1fa3a3b295452c784fd949ea8ea3fb255a9d099ecc24932493982c3",
+    "runtime_back_navy_sha256": "af0f63ab34288edcfd84b6044d25c3ead4b86f16a90c0a77a244da0348c94050",
+    "runtime_back_wine_sha256": "d1884645a5aa6ecba323ce71503fb8a87617890906ca7a00f400ceef0daa0c2f",
     "representative_face_hashes": {
-      "AS.bmp": "44f6b303411f26890de9c77d721d499bf6cd3b7fbba0d0ee2c67ef38d662658e",
-      "KH.bmp": "3c0293fec7ef5aacab112fc83c096bad018fc3f5ca2255e112186e3fcdae7f4b"
+      "AS.bmp": "2efb540b115d31dae9823c9c902650866043fe1298a58b6a86dab1ce50e9be60",
+      "KH.bmp": "b25602cb5ec165bce60e3d3b84016d983951f49c543e9ce338d4cc23c32f5a3e"
     },
-    "source": "Original generated felt, floral/petal decoration and blue/gold backs plus CC0 Kennard-derived warm ivory faces.",
-    "face_identity_count": 52
+    "source_png_hashes": {
+      "backgrounds/felt_approved_640x480.png": "2574ffcce6a13b9abc5342f684214aafb6c592d21476472cb95a94531b2bf9f3",
+      "backs/back_tropical_blue_gold_72x100.png": "4eedc69c5149adee278d4ad17f1ac66f716424ca7ace9448b8faad96b3849732",
+      "faces_72x100/AS.png": "fdf7ec74f08eefac553a1de8a6ad7be9de57a2160fec0fd1ef49bfba233164c7",
+      "faces_72x100/KH.png": "1af99120d19ba849847a515cbbff6b84499be58ffc00b9af3be5f9f7d89d5b1f"
+    },
+    "source": "Approved Drive package: unchanged felt background, warm-ivory Kennard faces (72x100 + 144x200), tropical blue/gold back master/rasters. Runtime BMPs are lossless installs only. Wine alternate back retained from pre-M0.1F runtime.",
+    "face_identity_count": 52,
+    "face_source_resolutions": [
+      "72x100",
+      "144x200"
+    ]
   },
   "runtime_format": "BMP files generated losslessly from pinned PNG assets for SDL_LoadBMP runtime loading"
 }
