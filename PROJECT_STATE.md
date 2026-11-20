@@ -33,10 +33,10 @@ Updated: 2026-11-20.
   same M0.1E branch: genuine Google Fonts / Font Diner TTF, Apache-2.0 licence
   and metadata are bundled, Go RX Ink is removed, and evidence screenshots are in
   `docs/screenshots/m01e-permanent-marker/`.
-- M0.1F is implemented on `feat/m0-1f-card-table-art`: generated emerald felt,
-  peripheral tropical flowers/petals, blue/gold floral backs, warm ivory
-  Kennard-derived faces and runtime card shadows. Before/after screenshots are in
-  `docs/screenshots/m01f/`.
+- M0.1F is implemented on `feat/m0-1f-card-table-art` using the approved Drive
+  package (`croupier_m01f_approved_assets.zip`): unchanged felt, warm-ivory
+  Kennard faces, tropical blue/gold back, and runtime card shadows. Before/after
+  screenshots are in `docs/screenshots/m01f/`.
 - No RG35XXSP hardware testing, device mapping or packaging has been performed.
 
 ## Goal

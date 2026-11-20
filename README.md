@@ -91,14 +91,13 @@ The locked 640×480 Croupier-RX title image and complete card pack are documente
 in `assets/source/ASSET_MANIFEST.json`. Runtime uses deterministic BMP copies
 generated from the pinned PNG assets so SDL can load them without a new image
 decoder dependency. Source-controlled provenance includes the Kennard SVG source
-cards, M0.1F art-polish generator, Permanent Marker Apache-2.0 licence/metadata and the
+cards, approved M0.1F package installer, Permanent Marker Apache-2.0 licence/metadata and the
 complete asset manifest. Menus and gameplay HUD use the bundled genuine
 Permanent Marker Regular font from Google Fonts / Font Diner, with warm
 light-yellow foreground panels.
-M0.1F derives warm ivory 72×100 runtime card faces from accurate Kennard source
-PNGs, adds deep blue/gold floral backs, and uses an original generated emerald
-felt with peripheral hibiscus/plumeria-style decoration. The locked title art is
-unchanged.
+M0.1F installs the approved Drive package unchanged: emerald felt background,
+warm-ivory Kennard faces, and the tropical blue/gold card back. Runtime BMPs are
+lossless installs only. The locked title art is unchanged.
 
 The full candidate follows the cursor as an overlay. Its unchanged source remains
 rendered normally; there is no source ghost while holding. The status bar shows
