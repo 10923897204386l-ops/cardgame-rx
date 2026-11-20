@@ -1,4 +1,5 @@
 #include "play_render.h"
+#include "fx.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -214,12 +215,19 @@ static void menu_overlay(SDL_Renderer *r, const PlayUI *ui) {
 }
 void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
                  const Layout *l, const KeyboardMap *keys, BackTheme theme, uint64_t now) {
+    play_render_fx(r,s,ui,l,keys,theme,now,NULL);
+}
+void play_render_fx(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
+                    const Layout *l, const KeyboardMap *keys, BackTheme theme,
+                    uint64_t now, PlayFX *fx) {
     if (ui->screen == MENU_MAIN) {
         if (!render_title_background(r)) render_table_background(r);
         menu_overlay(r,ui);
+        if (fx) fx_render_over(r,fx,ui,l,s,theme,now);
         return;
     }
     render_table_background(r);
+    if (fx) fx_render_under(r,fx,theme,now);
     if (ui->controls_visible) controls_bar(r,keys);
     top_pile_visible(r,&s->stock,layout_slot(l,0,false),ui,(KlondikePile){K_STOCK,0},theme);
     top_pile_visible(r,&s->waste,layout_slot(l,1,false),ui,(KlondikePile){K_WASTE,0},theme);
@@ -251,9 +259,13 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
         }
     }
     size_t chosen = 0; bool legal = play_preview(ui,s,&chosen);
-    SDL_Color focus_color = legal ? (SDL_Color){111,255,148,255} : (SDL_Color){255,219,90,255};
     Rect focus = play_focus_rect(l,s,ui);
-    render_round_outline(r,(Rect){focus.x-2,focus.y-2,focus.w+4,focus.h+4},10,4,focus_color);
+    if (fx && fx_enabled(fx))
+        fx_draw_selection_glow(r,(Rect){focus.x-2,focus.y-2,focus.w+4,focus.h+4},legal,now);
+    else {
+        SDL_Color focus_color = legal ? (SDL_Color){111,255,148,255} : (SDL_Color){255,219,90,255};
+        render_round_outline(r,(Rect){focus.x-2,focus.y-2,focus.w+4,focus.h+4},10,4,focus_color);
+    }
     if (ui->held) {
         Rect bounds = play_held_bounds(l,s,ui);
         const Pile *p = klondike_pile(s,ui->source);
@@ -266,7 +278,11 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
         SDL_Color held_color = play_invalid_outline(ui,now) ? (SDL_Color){255,42,54,255} : (SDL_Color){119,218,255,255};
         render_round_outline(r,bounds,10,4,held_color);
     }
-    if (klondike_won(s) && ui->screen == MENU_PLAYING) victory_fireworks(r,now);
+    if (klondike_won(s) && ui->screen == MENU_PLAYING) {
+        if (!(fx && fx_enabled(fx))) victory_fireworks(r,now);
+        /* With FX enabled, restrained shimmer/cascade is drawn in fx_render_over. */
+    }
+    if (fx && ui->held) fx_note_held(fx, play_held_bounds(l,s,ui), now);
     /* Fixed status strip, always on top of table/carry. */
     status_bar(r,(Rect){6,2,628,l->status_h-4});
     char label[96];
@@ -286,4 +302,8 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
     hud_text(r,552,16,"START PAUSE",120,0.40f);
     if (klondike_won(s)) hud_text(r,330,16,"YOU WIN - START NEW GAME",220,0.40f);
     if (ui->screen != MENU_PLAYING) menu_overlay(r,ui);
+    if (fx) {
+        fx_set_victory(fx, klondike_won(s) && ui->screen == MENU_PLAYING, now);
+        fx_render_over(r,fx,ui,l,s,theme,now);
+    }
 }

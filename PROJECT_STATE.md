@@ -44,14 +44,15 @@ Reusable card-game engine for RG35XXSP; Klondike first, 500 later. Keep rules,
 input, transient interaction and rendering separate.
 
 ## Current milestone
-M0.1F card/table art polish is implemented locally on
-`feat/m0-1f-card-table-art`, awaiting final review and PR. See
-`tasks/M0.1F-REPORT.md` for commands, evidence and remaining risks.
+M0.1G animation/audio polish is implemented on
+`feat/m0-1g-animation-audio` (from the M0.1F art branch). See
+`tasks/M0.1G-REPORT.md`. Music is intentionally not committed pending an approved
+licensed shortlist. M0.1F PR #7 remains open separately.
 
 ## Known limits
 - Tall-column layout is a readable prototype, not final device-polished scrolling.
-- Saves, audio and physical device support are absent.
+- Desktop SFX exist; music and physical device support are absent. Saves absent.
 
 ## One next action
-Review M0.1F at native 640×480, then open a squash-merge PR if accepted. Do not
-begin device packaging or another milestone without approval.
+Review M0.1G screenshots/SFX and decide music shortlist approval. Keep M0.1F and
+M0.1G PRs unmerged until accepted. Do not begin device packaging without approval.

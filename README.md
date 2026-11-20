@@ -156,7 +156,8 @@ PNG evidence is in `docs/screenshots/`; M0.1C views are in `m01c/`, M0.1D
 views are in `m01d/`, M0.1E desktop-polish validation views are in `m01e/`, and
 the Permanent Marker UI font replacement evidence is in `m01e-permanent-marker/`.
 M0.1F before/after card and table art captures are in `m01f/before/` and
-`m01f/after/`.
+`m01f/after/`. M0.1G animation/audio evidence is in `m01g/`.
+Optional flags: `--no-anim`, `--no-audio`.
 The desktop test writes invalid, pause, confirmation, controls-bar hidden/shown,
 tall, held and win BMP fixtures in its build/test working directory. BMP capture adds no image library;
 the committed PNGs are lossless conversions for review.
