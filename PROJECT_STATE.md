@@ -33,6 +33,10 @@ Updated: 2026-11-20.
   same M0.1E branch: genuine Google Fonts / Font Diner TTF, Apache-2.0 licence
   and metadata are bundled, Go RX Ink is removed, and evidence screenshots are in
   `docs/screenshots/m01e-permanent-marker/`.
+- M0.1F is implemented on `feat/m0-1f-card-table-art`: generated emerald felt,
+  peripheral tropical flowers/petals, blue/gold floral backs, warm ivory
+  Kennard-derived faces and runtime card shadows. Before/after screenshots are in
+  `docs/screenshots/m01f/`.
 - No RG35XXSP hardware testing, device mapping or packaging has been performed.
 
 ## Goal
@@ -40,14 +44,14 @@ Reusable card-game engine for RG35XXSP; Klondike first, 500 later. Keep rules,
 input, transient interaction and rendering separate.
 
 ## Current milestone
-M0.1E desktop polish and validation is implemented locally on
-`feat/m0-1e-desktop-polish`, awaiting final review and PR. See
-`tasks/M0.1E-REPORT.md` for commands, evidence and remaining risks.
+M0.1F card/table art polish is implemented locally on
+`feat/m0-1f-card-table-art`, awaiting final review and PR. See
+`tasks/M0.1F-REPORT.md` for commands, evidence and remaining risks.
 
 ## Known limits
 - Tall-column layout is a readable prototype, not final device-polished scrolling.
 - Saves, audio and physical device support are absent.
 
 ## One next action
-Review M0.1E at native 640×480, then open a squash-merge PR if accepted. Do not
+Review M0.1F at native 640×480, then open a squash-merge PR if accepted. Do not
 begin device packaging or another milestone without approval.
