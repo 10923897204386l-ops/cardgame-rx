@@ -112,7 +112,7 @@ static void top_pile_visible(SDL_Renderer *r, const Pile *p, Rect b, const PlayU
         shadow(r,b,46);
         render_card(r,b,top,theme);
     } else {
-        empty_slot(r,b,ref.zone == K_STOCK ? "STOCK" : ref.zone == K_WASTE ? "WASTE" : "ACE");
+        empty_slot(r,b,ref.zone == K_STOCK ? "STOCK" : NULL);
     }
 }
 static void menu_panel(SDL_Renderer *r, Rect b) {
