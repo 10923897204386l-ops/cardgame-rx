@@ -4,6 +4,12 @@
 
 static void color(SDL_Renderer *r, SDL_Color c) { SDL_SetRenderDrawColor(r,c.r,c.g,c.b,c.a); }
 static void fill(SDL_Renderer *r, Rect b) { SDL_Rect rect = {b.x,b.y,b.w,b.h}; SDL_RenderFillRect(r,&rect); }
+static void shadow(SDL_Renderer *r, Rect b, int alpha) {
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
+    render_round_fill(r,(Rect){b.x+3,b.y+4,b.w,b.h},8,(SDL_Color){0,0,0,alpha});
+    render_round_fill(r,(Rect){b.x+1,b.y+2,b.w,b.h},8,(SDL_Color){0,0,0,alpha/2});
+    SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
+}
 static void outline(SDL_Renderer *r, Rect b, int expand, SDL_Color c) {
     render_round_outline(r,(Rect){b.x-expand,b.y-expand,b.w+2*expand,b.h+2*expand},8,1,c);
 }
@@ -18,7 +24,7 @@ static void top_pile_visible(SDL_Renderer *r, const Pile *p, Rect b, const PlayU
     if (ui->held && ui->source.zone == ref.zone && ui->source.index == ref.index) {
         top = ui->source_start ? &p->cards[ui->source_start - 1] : NULL;
     }
-    if (top) render_card(r,b,top,theme);
+    if (top) { shadow(r,b,46); render_card(r,b,top,theme); }
     else {
         color(r,(SDL_Color){119,163,137,255});
         render_text(r,b.x+8,b.y+44,ref.zone == K_STOCK ? "STOCK" : ref.zone == K_WASTE ? "WASTE" : "ACE",1);
@@ -142,6 +148,7 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
             visible_count = ui->source_start;
         for (size_t i = 0; i < visible_count; ++i) {
             Rect b = play_card_rect(l,p,col,i);
+            if (i + 1 == visible_count) shadow(r,b,40);
             render_card(r,b,&p->cards[i],theme);
             if (i+1 == visible_count && b.y+b.h > CANVAS_HEIGHT) {
                 /* Visible ellipsis signals cropped pip art; index stays whole. */
@@ -167,6 +174,7 @@ void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
         size_t count = play_held_count(ui,s);
         for (size_t i = 0; i < count; ++i) {
             Rect b = {bounds.x,bounds.y+(int)i*play_held_overlap(l,count),l->card_w,l->card_h};
+            if (i + 1 == count) shadow(r,b,54);
             render_card(r,b,&p->cards[ui->source_start+i],theme);
         }
         SDL_Color held_color = play_invalid_outline(ui,now) ? (SDL_Color){255,42,54,255} : (SDL_Color){119,218,255,255};
