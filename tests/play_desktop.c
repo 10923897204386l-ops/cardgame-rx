@@ -6,13 +6,23 @@ static SDL_Surface *surface;
 static SDL_Renderer *renderer;
 static Layout layout;
 static void draw(const KlondikeState *s, const PlayUI *ui, uint64_t now) {
-    play_render(renderer,s,ui,&layout,back_theme(false),now); SDL_RenderPresent(renderer);
+    play_render(renderer,s,ui,&layout,NULL,back_theme(false),now); SDL_RenderPresent(renderer);
+}
+static void draw_keys(const KlondikeState *s, const PlayUI *ui, const KeyboardMap *keys, uint64_t now) {
+    play_render(renderer,s,ui,&layout,keys,back_theme(false),now); SDL_RenderPresent(renderer);
 }
 static Uint32 pixel(int x,int y) { return ((Uint32 *)((unsigned char *)surface->pixels+y*surface->pitch))[x]; }
 static bool pixel_equal(int ax,int ay,int bx,int by) { return pixel(ax,ay) == pixel(bx,by); }
 static bool rgb(int x,int y,int red,int green,int blue) {
     Uint8 r,g,b; SDL_GetRGB(pixel(x,y),surface->format,&r,&g,&b);
     return r == red && g == green && b == blue;
+}
+static uint32_t pixel_sum(Rect r) {
+    uint32_t sum = 0;
+    for (int y = r.y; y < r.y + r.h; ++y)
+        for (int x = r.x; x < r.x + r.w; ++x)
+            sum = sum * 33u + pixel(x,y);
+    return sum;
 }
 static PlayEvent key(PlayUI *ui,KlondikeGame *game,KeyboardMap *map,SDL_Scancode code,uint64_t now) {
     SDL_Event e; SDL_zero(e); e.type = SDL_KEYDOWN; e.key.keysym.scancode = code;
@@ -68,6 +78,14 @@ static void carry_and_flash(void) {
     CHECK(play_dispatch(&ui,&g,INPUT_SELECT,121) == PLAY_NONE && ui.controls_visible);
     draw(&g.state,&ui,121);
     CHECK(SDL_SaveBMP(surface,"play-controls-shown.bmp") == 0);
+    uint32_t default_help_pixels = pixel_sum((Rect){500,454,130,18});
+    KeyboardMap custom = keys;
+    CHECK(keyboard_bind(&custom,"select=F2"));
+    CHECK(keyboard_bind(&custom,"l2=F1"));
+    CHECK(keyboard_valid(&custom));
+    draw_keys(&g.state,&ui,&custom,121);
+    CHECK(SDL_SaveBMP(surface,"play-controls-custom.bmp") == 0);
+    CHECK(pixel_sum((Rect){500,454,130,18}) != default_help_pixels);
     CHECK(play_dispatch(&ui,&g,INPUT_SELECT,122) == PLAY_NONE && !ui.controls_visible);
     draw(&g.state,&ui,122);
     CHECK(pixel(b.x+10,b.y+10) != 0); /* held asset-backed card is rendered */

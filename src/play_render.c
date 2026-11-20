@@ -1,5 +1,6 @@
 #include "play_render.h"
 #include <stdio.h>
+#include <string.h>
 
 static void color(SDL_Renderer *r, SDL_Color c) { SDL_SetRenderDrawColor(r,c.r,c.g,c.b,c.a); }
 static void fill(SDL_Renderer *r, Rect b) { SDL_Rect rect = {b.x,b.y,b.w,b.h}; SDL_RenderFillRect(r,&rect); }
@@ -46,13 +47,50 @@ static void status_bar(SDL_Renderer *r, Rect b) {
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_NONE);
     render_round_outline(r,b,6,2,(SDL_Color){43,35,24,255});
 }
-static void controls_bar(SDL_Renderer *r) {
+static const char *key_name(const KeyboardMap *keys, InputAction action) {
+    static KeyboardMap defaults;
+    static bool initialized;
+    if (!initialized) { defaults = keyboard_default(); initialized = true; }
+    if (!keys) keys = &defaults;
+    const char *name = SDL_GetScancodeName(keys->keys[action]);
+    if (!name || !*name) return keyboard_action_name(action);
+    if (!strcmp(name,"Left Ctrl")) return "LCtrl";
+    if (!strcmp(name,"Right Ctrl")) return "RCtrl";
+    if (!strcmp(name,"Left Shift")) return "LShift";
+    if (!strcmp(name,"Right Shift")) return "RShift";
+    if (!strcmp(name,"Left Alt")) return "LAlt";
+    if (!strcmp(name,"Right Alt")) return "RAlt";
+    if (!strcmp(name,"Space")) return "Space";
+    if (!strcmp(name,"Return")) return "Enter";
+    if (!strcmp(name,"Escape")) return "Esc";
+    return name;
+}
+static bool dpad_default(const KeyboardMap *keys) {
+    static KeyboardMap defaults;
+    static bool initialized;
+    if (!initialized) { defaults = keyboard_default(); initialized = true; }
+    if (!keys) keys = &defaults;
+    return keys->keys[INPUT_LEFT] == defaults.keys[INPUT_LEFT] &&
+           keys->keys[INPUT_RIGHT] == defaults.keys[INPUT_RIGHT] &&
+           keys->keys[INPUT_UP] == defaults.keys[INPUT_UP] &&
+           keys->keys[INPUT_DOWN] == defaults.keys[INPUT_DOWN];
+}
+static void controls_bar(SDL_Renderer *r, const KeyboardMap *keys) {
+    char label[96];
     status_bar(r,(Rect){6,450,628,26});
-    hud_text(r,92,457,"DPAD MOVE",140,0.36f);
-    hud_text(r,206,457,"B PICK/PLACE",150,0.36f);
-    hud_text(r,333,457,"A CANCEL/WASTE",170,0.36f);
-    hud_text(r,472,457,"Y DRAW  X ACE",180,0.36f);
-    hud_text(r,583,457,"L2+SELECT UNDO",130,0.32f);
+    hud_text(r,46,457,dpad_default(keys) ? "ARROWS" : "D-PAD",82,0.40f);
+    snprintf(label,sizeof(label),"%s PICK",key_name(keys,INPUT_B));
+    hud_text(r,124,457,label,78,0.38f);
+    snprintf(label,sizeof(label),"%s CANCEL",key_name(keys,INPUT_A));
+    hud_text(r,208,457,label,88,0.36f);
+    snprintf(label,sizeof(label),"%s DRAW",key_name(keys,INPUT_Y));
+    hud_text(r,302,457,label,82,0.36f);
+    snprintf(label,sizeof(label),"%s ACE",key_name(keys,INPUT_X));
+    hud_text(r,382,457,label,72,0.36f);
+    snprintf(label,sizeof(label),"%s HELP",key_name(keys,INPUT_SELECT));
+    hud_text(r,462,457,label,74,0.34f);
+    snprintf(label,sizeof(label),"%s+%s UNDO",key_name(keys,INPUT_L2),key_name(keys,INPUT_SELECT));
+    hud_text(r,560,457,label,132,0.34f);
 }
 static void menu_overlay(SDL_Renderer *r, const PlayUI *ui) {
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
@@ -84,14 +122,14 @@ static void menu_overlay(SDL_Renderer *r, const PlayUI *ui) {
     }
 }
 void play_render(SDL_Renderer *r, const KlondikeState *s, const PlayUI *ui,
-                 const Layout *l, BackTheme theme, uint64_t now) {
+                 const Layout *l, const KeyboardMap *keys, BackTheme theme, uint64_t now) {
     if (ui->screen == MENU_MAIN) {
         if (!render_title_background(r)) render_table_background(r);
         menu_overlay(r,ui);
         return;
     }
     render_table_background(r);
-    if (ui->controls_visible) controls_bar(r);
+    if (ui->controls_visible) controls_bar(r,keys);
     top_pile_visible(r,&s->stock,layout_slot(l,0,false),ui,(KlondikePile){K_STOCK,0},theme);
     top_pile_visible(r,&s->waste,layout_slot(l,1,false),ui,(KlondikePile){K_WASTE,0},theme);
     for (unsigned f = 0; f < 4; ++f)
